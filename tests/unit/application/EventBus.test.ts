@@ -1,0 +1,84 @@
+import { describe, it, expect, vi } from 'vitest';
+import { EventBus } from '../../../src/application/EventBus.js';
+import type { ImportStartedEvent, BatchCompletedEvent } from '../../../src/domain/events/DomainEvents.js';
+
+describe('EventBus', () => {
+  it('should emit events to registered handlers', () => {
+    const bus = new EventBus();
+    const handler = vi.fn();
+
+    bus.on('import:started', handler);
+
+    const event: ImportStartedEvent = {
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 100,
+      totalBatches: 10,
+      timestamp: Date.now(),
+    };
+
+    bus.emit(event);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(event);
+  });
+
+  it('should not call handlers for different event types', () => {
+    const bus = new EventBus();
+    const handler = vi.fn();
+
+    bus.on('import:started', handler);
+
+    const event: BatchCompletedEvent = {
+      type: 'batch:completed',
+      jobId: 'test-job',
+      batchId: 'batch-1',
+      batchIndex: 0,
+      processedCount: 10,
+      failedCount: 0,
+      totalCount: 10,
+      timestamp: Date.now(),
+    };
+
+    bus.emit(event);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('should support multiple handlers for the same event', () => {
+    const bus = new EventBus();
+    const handler1 = vi.fn();
+    const handler2 = vi.fn();
+
+    bus.on('import:started', handler1);
+    bus.on('import:started', handler2);
+
+    const event: ImportStartedEvent = {
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 100,
+      totalBatches: 10,
+      timestamp: Date.now(),
+    };
+
+    bus.emit(event);
+    expect(handler1).toHaveBeenCalledOnce();
+    expect(handler2).toHaveBeenCalledOnce();
+  });
+
+  it('should remove handlers with off()', () => {
+    const bus = new EventBus();
+    const handler = vi.fn();
+
+    bus.on('import:started', handler);
+    bus.off('import:started', handler);
+
+    bus.emit({
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 100,
+      totalBatches: 10,
+      timestamp: Date.now(),
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+});

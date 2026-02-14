@@ -1,0 +1,22 @@
+# Source code (dist is published via "files" in package.json)
+src/
+tests/
+
+# Config files
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.js
+.prettierrc
+.editorconfig
+.gitignore
+
+# Dev files
+CLAUDE.md
+todo.md
+coverage/
+.github/
+
+# OS files
+.DS_Store
+Thumbs.db
