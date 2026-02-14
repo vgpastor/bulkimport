@@ -43,7 +43,7 @@ Backlog organizado por fases. Cada tarea tiene un estado:
 - [x] Escribir test de aceptación: custom validator (NIF)
 - [x] Implementar validación completa en SchemaValidator (todos los tipos: string, number, boolean, date, email, custom)
 - [x] Escribir tests unitarios de SchemaValidator
-- [ ] Implementar `skipEmptyRows` en SchemaValidator (declarado en `SchemaDefinition` pero no usado)
+- [x] Implementar `skipEmptyRows` en SchemaValidator — añadidos `isEmptyRow()` y `skipEmptyRows` getter en `SchemaValidator`, integrado en `BulkImport.processStreamBatch()` y `preview()`
 
 ## Fase 4: Control de flujo (Tests 3 y 4)
 
@@ -104,7 +104,7 @@ Backlog organizado por fases. Cada tarea tiene un estado:
 - [x] Corregir `percentage` en `buildProgress()` — ahora incluye `processed + failed` en el cálculo, imports con fallos llegan al 100%
 - [x] Contadores O(1) — `buildProgress()` y `buildSummary()` usan contadores en vez de `allRecords.filter()`. Eliminado `allRecords[]`.
 - [ ] Implementar `maxConcurrentBatches` — declarado en config pero no implementado, los batches son secuenciales
-- [ ] Tests de edge cases: fichero vacío, fichero enorme (streaming), encodings especiales, BOM, delimitadores raros
+- [x] Tests de edge cases — fichero vacío, solo header, whitespace, BOM (string y Buffer), delimitadores (`;`, `\t`, `|`), autodetección, campos con comillas/newlines/escape, line endings (CRLF, CR, trailing), single record, batchSize > records, all records fail, skipEmptyRows
 - [ ] Tests de concurrencia con `maxConcurrentBatches > 1`
 
 ## Fase 13: Publicación
@@ -132,5 +132,5 @@ Features sugeridos por consumers que requieren más análisis de diseño antes d
 - [ ] Extraer use cases de `BulkImport` facade a `application/usecases/` (CreateImportJob, StartImport, PauseImport, etc.) — actualmente toda la orquestación vive en una sola clase
 - [ ] Extraer lógica de batching como domain service `BatchSplitter` — `splitIntoBatches` ya no existe (eliminado con el refactor de streaming), pero la lógica de acumulación en `batchBuffer` dentro de `start()` podría extraerse a un servicio de dominio reutilizable
 - [x] ~~El record no debería retener datos tras ser procesado~~ — resuelto con streaming: records se liberan tras cada batch, solo `failedRecords` se retienen
-- [ ] `markRecordProcessed` en `Record.ts` ya no se usa en `BulkImport` (eliminado con el refactor de streaming/contadores). Evaluar si eliminarlo o mantenerlo como parte de la API pública para consumers que manejen records manualmente
+- [x] ~~`markRecordProcessed` en `Record.ts`~~ — eliminado. No se exportaba en `index.ts` (no era API pública), no se usaba en ningún fichero. `RecordStatus: 'processed'` se mantiene en el tipo por compatibilidad con `InMemoryStateStore`
 - [ ] `DataSource.sample()` en la spec recibe `maxRecords` y devuelve `AsyncIterable`, pero la implementación actual recibe `maxBytes` y devuelve `Promise<string | Buffer>`. Alinear con la spec o documentar la decisión

@@ -77,6 +77,9 @@ export class BulkImport {
     const columns = new Set<string>();
 
     for (const record of records) {
+      if (this.validator.skipEmptyRows && this.validator.isEmptyRow(record.raw)) {
+        continue;
+      }
       for (const key of Object.keys(record.raw)) {
         columns.add(key);
       }
@@ -289,6 +292,10 @@ export class BulkImport {
     for (const record of records) {
       if (this.abortController?.signal.aborted) break;
       await this.checkPause();
+
+      if (this.validator.skipEmptyRows && this.validator.isEmptyRow(record.raw)) {
+        continue;
+      }
 
       const transformed = this.validator.applyTransforms(record.raw);
       const validation = this.validator.validate(transformed);

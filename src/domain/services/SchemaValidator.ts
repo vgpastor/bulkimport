@@ -158,6 +158,16 @@ export class SchemaValidator {
     }
   }
 
+  isEmptyRow(record: RawRecord): boolean {
+    return Object.values(record).every(
+      (v) => v === undefined || v === null || v === '',
+    );
+  }
+
+  get skipEmptyRows(): boolean {
+    return this.schema.skipEmptyRows ?? false;
+  }
+
   private isEmpty(value: unknown): boolean {
     return value === undefined || value === null || value === '';
   }

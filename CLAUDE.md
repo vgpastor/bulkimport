@@ -186,17 +186,16 @@ Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lin
 - Pause/resume/abort with AbortController.
 - Preview with sampling.
 - Domain events with typed EventBus.
+- `skipEmptyRows` in `SchemaValidator` — filters empty rows before validation in both `start()` and `preview()`.
 - ESLint 9 flat config + Prettier configured and enforced.
-- 41 acceptance + unit tests passing.
+- 70 acceptance + unit tests passing (including edge cases: empty files, BOM, delimiters, line endings, quoted fields, skipEmptyRows).
 
 ### Known Gaps
 
 - `maxConcurrentBatches` is declared in config types but not implemented — batches process sequentially.
-- `skipEmptyRows` is declared in `SchemaDefinition` but not used by `SchemaValidator`.
 - `StateStore` port is partially used — `BulkImport` calls `saveJobState()` but not `saveProcessedRecord()` or query methods. In-memory counters are the source of truth during execution.
 - `BulkImport.restore()` static method not implemented (resume from persisted state after crash).
 - `application/usecases/` layer not extracted — all orchestration lives in `BulkImport` facade.
-- `markRecordProcessed` in `Record.ts` is no longer used by `BulkImport` after the streaming refactor — potential dead code or keep as public API for consumers managing records manually.
 - Missing parsers: `JsonParser`, `XmlParser`.
 - Missing sources: `FilePathSource`, `StreamSource`, `UrlSource`.
 - Missing state stores: `FileStateStore`.

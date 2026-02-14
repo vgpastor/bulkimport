@@ -33,10 +33,6 @@ export function markRecordInvalid(record: ProcessedRecord, errors: readonly Vali
   return { ...record, status: 'invalid', errors };
 }
 
-export function markRecordProcessed(record: ProcessedRecord): ProcessedRecord {
-  return { ...record, status: 'processed' };
-}
-
 export function markRecordFailed(record: ProcessedRecord, error: string): ProcessedRecord {
   return { ...record, status: 'failed', processingError: error };
 }

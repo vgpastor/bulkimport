@@ -189,4 +189,47 @@ describe('SchemaValidator', () => {
       expect(result.errors.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe('isEmptyRow', () => {
+    const validator = new SchemaValidator({
+      fields: [{ name: 'name', type: 'string', required: true }],
+    });
+
+    it('should detect row with all empty strings as empty', () => {
+      expect(validator.isEmptyRow({ name: '', age: '' })).toBe(true);
+    });
+
+    it('should detect row with all null/undefined as empty', () => {
+      expect(validator.isEmptyRow({ name: null, age: undefined })).toBe(true);
+    });
+
+    it('should detect row with mixed empty values as empty', () => {
+      expect(validator.isEmptyRow({ name: '', age: null, role: undefined })).toBe(true);
+    });
+
+    it('should not detect row with at least one value as empty', () => {
+      expect(validator.isEmptyRow({ name: 'Alice', age: '' })).toBe(false);
+    });
+
+    it('should detect empty object as empty', () => {
+      expect(validator.isEmptyRow({})).toBe(true);
+    });
+  });
+
+  describe('skipEmptyRows flag', () => {
+    it('should expose skipEmptyRows as false by default', () => {
+      const validator = new SchemaValidator({
+        fields: [{ name: 'name', type: 'string', required: true }],
+      });
+      expect(validator.skipEmptyRows).toBe(false);
+    });
+
+    it('should expose skipEmptyRows as true when configured', () => {
+      const validator = new SchemaValidator({
+        fields: [{ name: 'name', type: 'string', required: true }],
+        skipEmptyRows: true,
+      });
+      expect(validator.skipEmptyRows).toBe(true);
+    });
+  });
 });
