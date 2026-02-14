@@ -122,10 +122,61 @@ Prefix with: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
 ## Pull Requests
 
 1. Create a feature branch from `main`
-2. Make sure all checks pass: `npm run typecheck && npm run lint && npm test`
+2. Make sure all checks pass: `npm run typecheck && npm run lint && npm test && npm run build`
 3. Write/update tests for your changes
 4. Keep PRs focused — one feature or fix per PR
-5. Update the README if adding public API surface
+5. **Update documentation** (see checklist below)
+
+### Documentation checklist
+
+Before marking a PR as ready for review, verify:
+
+- [ ] **`README.md`** — Updated if the PR adds, changes, or removes public API (methods, config options, adapters, events). Usage examples must reflect the current API.
+- [ ] **`CHANGELOG.md`** — Entry added under `[Unreleased]` describing the change. Use `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` categories.
+- [ ] **`todo.md`** — Completed items marked as `[x]`, new items added if discovered during implementation.
+
+Documentation drift is a bug. A PR that changes behavior without updating docs is incomplete.
+
+## Breaking Changes & Versioning
+
+This is a public library. Our users depend on the stability of the API. **Breaking their code without warning is unacceptable.**
+
+### What counts as a breaking change
+
+- Removing or renaming any export from `index.ts` (functions, classes, types, interfaces).
+- Changing the signature of a public method (adding required params, changing return/param types).
+- Changing the shape of a public interface or type (removing fields, changing field types).
+- Renaming event names or changing event payload shapes.
+- Changing observable behavior of a public method (e.g., sync to async, different return value).
+- Removing or renaming config options in `BulkImportConfig` or `SchemaDefinition`.
+
+### Deprecation-first rule
+
+**NEVER remove or change public API directly.** Always follow this two-step process:
+
+1. **Deprecate first** (in a minor or patch release):
+   - Add `@deprecated` JSDoc with the target removal version and migration path.
+   - Keep the old API working alongside the new one.
+   - Emit a runtime warning on first use: `"[bulkimport] oldMethod() is deprecated and will be removed in vX.0.0. Use newMethod() instead."`
+   - Document in CHANGELOG.
+   - Existing tests for the deprecated API must keep passing.
+
+2. **Remove in the next major version**:
+   - Remove the deprecated code.
+   - Update exports, README, and CHANGELOG.
+   - Bump major version.
+
+### Semver
+
+- **Patch** (`0.1.x`): Bug fixes, performance, internal refactors, docs. No API changes.
+- **Minor** (`0.x.0`): New features, new exports, new config options. Existing code keeps working. Deprecations go here.
+- **Major** (`x.0.0`): Removal of deprecated APIs. Must be preceded by a minor with deprecations.
+
+> During pre-1.0 (`0.x.y`), semver allows breaking changes in minor versions. We still **strongly prefer** the deprecation-first approach. If unavoidable, breaking changes MUST include a migration guide in the CHANGELOG.
+
+### Before submitting a PR
+
+Ask yourself: _"Will this change break code that currently works for a consumer?"_ If yes, follow the deprecation-first rule. If unsure, open an issue to discuss before coding.
 
 ## Adding a New Adapter
 

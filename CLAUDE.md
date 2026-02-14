@@ -149,6 +149,12 @@ Everything exported from `index.ts` is public API. Changes to exports are breaki
 - Domain event types (for typed event handlers)
 - Built-in adapters: `CsvParser`, `BufferSource`, `InMemoryStateStore`
 
+## Breaking Changes Policy
+
+**Read and follow the "Breaking Changes & Versioning" section in `CONTRIBUTING.md`.** That is the canonical source for semver rules, deprecation-first protocol, and what counts as a breaking change.
+
+Key rule: **NEVER remove or change public API directly.** Always deprecate first (`@deprecated` + runtime `console.warn`), then remove in the next major version.
+
 ## Technical Decisions
 
 - **Streaming obligatory**: Never load the entire file in memory. Use `AsyncIterable` / `ReadableStream` to process record by record. This allows handling files with millions of records.
