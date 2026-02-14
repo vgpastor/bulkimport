@@ -3,7 +3,8 @@ export type ValidationErrorCode =
   | 'TYPE_MISMATCH'
   | 'PATTERN_MISMATCH'
   | 'CUSTOM_VALIDATION'
-  | 'UNKNOWN_FIELD';
+  | 'UNKNOWN_FIELD'
+  | 'DUPLICATE_VALUE';
 
 export interface ValidationError {
   readonly field: string;

@@ -87,9 +87,9 @@ Backlog organizado por fases. Cada tarea tiene un estado:
 
 ## Fase 10: Schema avanzado (feedback de usuarios)
 
-- [ ] Tipo de campo `array` con separador configurable — permite declarar campos como `{ name: 'authorizedZones', type: 'array', separator: ';' }` en vez de forzar al consumer a hacer split manual en el processor. Añadir `'array'` a `FieldType`, añadir `separator` a `FieldDefinition`, implementar parsing y validación en `SchemaValidator`
-- [ ] Aliases de columnas — mapeo declarativo de headers alternativos: `{ name: 'documentNumber', aliases: ['document_number', 'Documento', 'DNI'] }`. Añadir `aliases?: readonly string[]` a `FieldDefinition`. Resolver aliases en la fase de parsing (antes de validar) para que el rest del pipeline trabaje con el nombre canónico. Este es el feature con más impacto según feedback (reduce soporte al usuario)
-- [ ] Detección de duplicados intra-import — permitir declarar campos únicos en el schema: `{ fields: [...], uniqueFields: ['identifier'] }`. Añadir `uniqueFields?: readonly string[]` a `SchemaDefinition`. Implementar tracking de valores vistos y emitir error de validación si se detecta duplicado. Decidir si aplica por batch o por import completo (requiere acumular set de valores vistos)
+- [x] Tipo de campo `array` con separador configurable — `{ name: 'zones', type: 'array', separator: ';' }`. Strings se splitean en `applyTransforms()`, arrays pasan tal cual. Validación acepta string o array. `isEmpty` trata `[]` como vacío para campos required.
+- [x] Aliases de columnas — `{ name: 'email', aliases: ['correo', 'mail'] }`. Resolución case-insensitive via `resolveAliases()` (siempre se ejecuta, no solo cuando hay aliases explícitos). Headers con casing diferente al canonical name se resuelven automáticamente.
+- [x] Detección de duplicados intra-import — `{ uniqueFields: ['identifier'] }`. Tracking cross-batch via `seenUniqueValues` Map en BulkImport. Case-insensitive para strings. Valores vacíos se ignoran. Errores con código `DUPLICATE_VALUE`.
 - [ ] Generación de template CSV desde schema — método estático o de instancia que genere un CSV de ejemplo a partir del schema: `BulkImport.generateTemplate(schema)` → `"identifier,name,documentNumber,..."`. Permite al frontend pedir el template al backend y mantenerlo siempre sincronizado con el schema
 
 ## Fase 11: Parsers adicionales

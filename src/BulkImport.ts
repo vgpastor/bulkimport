@@ -39,6 +39,7 @@ export class BulkImport {
   private processedCount = 0;
   private failedCount = 0;
   private failedRecordsAccum: ProcessedRecord[] = [];
+  private seenUniqueValues = new Map<string, Set<unknown>>();
   private startedAt?: number;
 
   private abortController: AbortController | null = null;
@@ -80,10 +81,11 @@ export class BulkImport {
       if (this.validator.skipEmptyRows && this.validator.isEmptyRow(record.raw)) {
         continue;
       }
-      for (const key of Object.keys(record.raw)) {
+      const aliased = this.validator.resolveAliases(record.raw);
+      for (const key of Object.keys(aliased)) {
         columns.add(key);
       }
-      const transformed = this.validator.applyTransforms(record.raw);
+      const transformed = this.validator.applyTransforms(aliased);
       const result = this.validator.validate(transformed);
 
       if (result.isValid) {
@@ -114,6 +116,7 @@ export class BulkImport {
     this.processedCount = 0;
     this.failedCount = 0;
     this.failedRecordsAccum = [];
+    this.seenUniqueValues = new Map();
     this.batches = [];
     this.totalRecords = 0;
 
@@ -297,11 +300,18 @@ export class BulkImport {
         continue;
       }
 
-      const transformed = this.validator.applyTransforms(record.raw);
+      const aliased = this.validator.resolveAliases(record.raw);
+      const transformed = this.validator.applyTransforms(aliased);
       const validation = this.validator.validate(transformed);
 
-      if (!validation.isValid) {
-        const invalidRecord = markRecordInvalid(record, validation.errors);
+      const uniqueErrors = this.validator.hasUniqueFields
+        ? this.validator.validateUniqueness(transformed, this.seenUniqueValues)
+        : [];
+
+      const allErrors = [...validation.errors, ...uniqueErrors];
+
+      if (allErrors.length > 0) {
+        const invalidRecord = markRecordInvalid(record, allErrors);
         this.failedCount++;
         this.failedRecordsAccum.push(invalidRecord);
         failedCount++;
@@ -311,7 +321,7 @@ export class BulkImport {
           jobId: this.jobId,
           batchId,
           recordIndex: record.index,
-          error: validation.errors.map((e) => e.message).join('; '),
+          error: allErrors.map((e) => e.message).join('; '),
           record: invalidRecord,
           timestamp: Date.now(),
         });

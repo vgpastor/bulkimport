@@ -4,7 +4,7 @@ Backend-agnostic bulk data import library for TypeScript/JavaScript. Schema vali
 
 ## Features
 
-- **Schema validation** — Define field types, required fields, patterns, custom validators, and transforms
+- **Schema validation** — Define field types, required fields, patterns, custom validators, transforms, column aliases, and unique field detection
 - **Batch processing** — Split large datasets into configurable batches
 - **Pause / Resume / Abort** — Full control over long-running imports
 - **Event-driven** — Subscribe to granular lifecycle events (import, batch, record level)
@@ -56,12 +56,14 @@ Each field supports:
 | Property | Type | Description |
 |---|---|---|
 | `name` | `string` | Column name to match |
-| `type` | `'string' \| 'number' \| 'boolean' \| 'date' \| 'email' \| 'custom'` | Built-in type validation |
+| `type` | `'string' \| 'number' \| 'boolean' \| 'date' \| 'email' \| 'array' \| 'custom'` | Built-in type validation |
 | `required` | `boolean` | Fail if missing or empty |
 | `pattern` | `RegExp` | Regex validation |
 | `customValidator` | `(value: unknown) => { valid: boolean; message?: string }` | Custom validation logic |
-| `transform` | `(value: unknown) => unknown` | Transform value before validation |
+| `transform` | `(value: unknown) => unknown` | Transform value after parsing |
 | `defaultValue` | `unknown` | Applied when the field is undefined |
+| `separator` | `string` | For `array` type: split character (default: `','`) |
+| `aliases` | `string[]` | Alternative column names that map to this field |
 
 ```typescript
 const schema = {
@@ -92,6 +94,56 @@ const schema = {
   strict: true, // Reject unknown fields
 };
 ```
+
+### Array Fields
+
+Declare `type: 'array'` to auto-split delimited strings into arrays:
+
+```typescript
+const schema = {
+  fields: [
+    { name: 'email', type: 'email', required: true },
+    { name: 'tags', type: 'array', required: false },            // splits on ','
+    { name: 'zones', type: 'array', required: true, separator: ';' }, // splits on ';'
+  ],
+};
+
+// CSV: email,tags,zones
+//      alice@test.com,"admin,editor","zone-a;zone-b"
+// → { email: 'alice@test.com', tags: ['admin', 'editor'], zones: ['zone-a', 'zone-b'] }
+```
+
+### Column Aliases
+
+Map alternative column headers to canonical field names:
+
+```typescript
+const schema = {
+  fields: [
+    { name: 'email', type: 'email', required: true, aliases: ['correo', 'mail', 'e-mail'] },
+    { name: 'name', type: 'string', required: true, aliases: ['nombre', 'full_name'] },
+  ],
+};
+
+// CSV with Spanish headers: "Correo,Nombre" → resolved to { email, name }
+// Case-insensitive: "EMAIL,NAME" → resolved to { email, name }
+```
+
+### Unique Field Detection
+
+Detect duplicate values across the entire import:
+
+```typescript
+const schema = {
+  fields: [
+    { name: 'identifier', type: 'string', required: true },
+    { name: 'name', type: 'string', required: true },
+  ],
+  uniqueFields: ['identifier'], // Duplicates produce DUPLICATE_VALUE errors
+};
+```
+
+Uniqueness is tracked across all batches (not per-batch). String comparisons are case-insensitive. Empty values are skipped.
 
 ## Events
 
@@ -346,18 +398,21 @@ const importer = new BulkImport({
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `schema` | `SchemaDefinition` | required | Field definitions and validation rules |
+| `schema` | `SchemaDefinition` | required | Field definitions, validation rules, `skipEmptyRows`, `strict`, `uniqueFields` |
 | `batchSize` | `number` | `100` | Records per batch |
 | `continueOnError` | `boolean` | `false` | Keep processing when a record fails |
 | `stateStore` | `StateStore` | `InMemoryStateStore` | Where to persist job state |
 
 ## Built-in Adapters
 
-| Adapter | Description |
-|---|---|
-| `CsvParser` | CSV parsing with auto-delimiter detection (uses PapaParse) |
-| `BufferSource` | Read from a string or Buffer in memory |
-| `InMemoryStateStore` | Non-persistent state store (default) |
+| Adapter | Type | Description |
+|---|---|---|
+| `CsvParser` | Parser | CSV parsing with auto-delimiter detection (uses PapaParse) |
+| `JsonParser` | Parser | JSON array and NDJSON with auto-detection. Nested objects flattened to strings |
+| `BufferSource` | Source | Read from a string or Buffer in memory |
+| `FilePathSource` | Source | Stream from a file path with configurable chunk size (Node.js only) |
+| `StreamSource` | Source | Accept `AsyncIterable` or `ReadableStream` (ideal for upload streams) |
+| `InMemoryStateStore` | State | Non-persistent state store (default) |
 
 ## Requirements
 

@@ -184,13 +184,16 @@ Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lin
 - Streaming batch processing — `start()` parses lazily and processes batch-by-batch, never loading all records in memory.
 - O(1) progress tracking with counters. Percentage includes both processed and failed records.
 - Memory release — `clearBatchRecords()` frees record data after each batch completes.
-- Full validation pipeline (string, number, boolean, date, email, custom validators).
+- Full validation pipeline (string, number, boolean, date, email, array, custom validators).
+- Array field type with configurable separator — strings are auto-split in `applyTransforms()`.
+- Column aliases — case-insensitive header mapping via `resolveAliases()` on `SchemaValidator`.
+- Unique field duplicate detection — cross-batch tracking via `seenUniqueValues` Map, case-insensitive for strings.
 - Pause/resume/abort with AbortController.
 - Preview with sampling.
 - Domain events with typed EventBus.
 - `skipEmptyRows` in `SchemaValidator` — filters empty rows before validation in both `start()` and `preview()`.
 - ESLint 9 flat config + Prettier configured and enforced.
-- 113 acceptance + unit tests passing (including edge cases: empty files, BOM, delimiters, line endings, quoted fields, skipEmptyRows).
+- 143 acceptance + unit tests passing (including edge cases, schema-advanced features, multiple parsers/sources).
 
 ### Known Gaps
 

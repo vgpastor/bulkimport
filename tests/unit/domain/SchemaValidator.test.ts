@@ -232,4 +232,135 @@ describe('SchemaValidator', () => {
       expect(validator.skipEmptyRows).toBe(true);
     });
   });
+
+  describe('array field type', () => {
+    const validator = new SchemaValidator({
+      fields: [{ name: 'tags', type: 'array', required: false }],
+    });
+
+    it('should accept string value for array field', () => {
+      const result = validator.validate({ tags: 'a,b,c' });
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should accept array value for array field', () => {
+      const result = validator.validate({ tags: ['a', 'b'] });
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should reject non-string non-array value', () => {
+      const result = validator.validate({ tags: 123 });
+      expect(result.isValid).toBe(false);
+      expect(result.errors[0]?.code).toBe('TYPE_MISMATCH');
+    });
+
+    it('should split string into array during applyTransforms', () => {
+      const result = validator.applyTransforms({ tags: 'a, b, c' });
+      expect(result.tags).toEqual(['a', 'b', 'c']);
+    });
+
+    it('should use custom separator', () => {
+      const v = new SchemaValidator({
+        fields: [{ name: 'tags', type: 'array', required: false, separator: ';' }],
+      });
+      const result = v.applyTransforms({ tags: 'a;b;c' });
+      expect(result.tags).toEqual(['a', 'b', 'c']);
+    });
+
+    it('should filter empty items after split', () => {
+      const result = validator.applyTransforms({ tags: 'a,,b,,c,' });
+      expect(result.tags).toEqual(['a', 'b', 'c']);
+    });
+
+    it('should not transform if value is already an array', () => {
+      const result = validator.applyTransforms({ tags: ['x', 'y'] });
+      expect(result.tags).toEqual(['x', 'y']);
+    });
+  });
+
+  describe('resolveAliases', () => {
+    const validator = new SchemaValidator({
+      fields: [
+        { name: 'email', type: 'email', required: true, aliases: ['correo', 'mail'] },
+        { name: 'name', type: 'string', required: true, aliases: ['nombre'] },
+      ],
+    });
+
+    it('should resolve alias to canonical name', () => {
+      const result = validator.resolveAliases({ correo: 'a@b.com', nombre: 'Alice' });
+      expect(result).toEqual({ email: 'a@b.com', name: 'Alice' });
+    });
+
+    it('should be case-insensitive', () => {
+      const result = validator.resolveAliases({ CORREO: 'a@b.com', NOMBRE: 'Alice' });
+      expect(result).toEqual({ email: 'a@b.com', name: 'Alice' });
+    });
+
+    it('should keep canonical name if already present', () => {
+      const result = validator.resolveAliases({ email: 'a@b.com', name: 'Alice' });
+      expect(result).toEqual({ email: 'a@b.com', name: 'Alice' });
+    });
+
+    it('should pass through unknown fields', () => {
+      const result = validator.resolveAliases({ email: 'a@b.com', name: 'Alice', extra: 'value' });
+      expect(result.extra).toBe('value');
+    });
+
+    it('should report hasAliases correctly', () => {
+      expect(validator.hasAliases).toBe(true);
+
+      const noAliases = new SchemaValidator({
+        fields: [{ name: 'email', type: 'email', required: true }],
+      });
+      expect(noAliases.hasAliases).toBe(false);
+    });
+  });
+
+  describe('validateUniqueness', () => {
+    const validator = new SchemaValidator({
+      fields: [
+        { name: 'identifier', type: 'string', required: true },
+        { name: 'name', type: 'string', required: true },
+      ],
+      uniqueFields: ['identifier'],
+    });
+
+    it('should pass for first occurrence', () => {
+      const seen = new Map<string, Set<unknown>>();
+      const errors = validator.validateUniqueness({ identifier: 'ID001', name: 'Alice' }, seen);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should fail for duplicate occurrence', () => {
+      const seen = new Map<string, Set<unknown>>();
+      validator.validateUniqueness({ identifier: 'ID001', name: 'Alice' }, seen);
+      const errors = validator.validateUniqueness({ identifier: 'ID001', name: 'Bob' }, seen);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.code).toBe('DUPLICATE_VALUE');
+    });
+
+    it('should be case-insensitive for strings', () => {
+      const seen = new Map<string, Set<unknown>>();
+      validator.validateUniqueness({ identifier: 'abc', name: 'Alice' }, seen);
+      const errors = validator.validateUniqueness({ identifier: 'ABC', name: 'Bob' }, seen);
+      expect(errors).toHaveLength(1);
+    });
+
+    it('should skip empty values', () => {
+      const seen = new Map<string, Set<unknown>>();
+      const errors1 = validator.validateUniqueness({ identifier: '', name: 'Alice' }, seen);
+      const errors2 = validator.validateUniqueness({ identifier: '', name: 'Bob' }, seen);
+      expect(errors1).toHaveLength(0);
+      expect(errors2).toHaveLength(0);
+    });
+
+    it('should report hasUniqueFields correctly', () => {
+      expect(validator.hasUniqueFields).toBe(true);
+
+      const noUnique = new SchemaValidator({
+        fields: [{ name: 'name', type: 'string', required: true }],
+      });
+      expect(noUnique.hasUniqueFields).toBe(false);
+    });
+  });
 });

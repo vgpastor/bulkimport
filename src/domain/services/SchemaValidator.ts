@@ -7,7 +7,11 @@ import { validResult, invalidResult } from '../model/ValidationResult.js';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class SchemaValidator {
-  constructor(private readonly schema: SchemaDefinition) {}
+  private readonly aliasMap: ReadonlyMap<string, string>;
+
+  constructor(private readonly schema: SchemaDefinition) {
+    this.aliasMap = this.buildAliasMap();
+  }
 
   validate(record: RawRecord): ValidationResult {
     const errors: ValidationError[] = [];
@@ -35,10 +39,71 @@ export class SchemaValidator {
     return errors.length === 0 ? validResult() : invalidResult(errors);
   }
 
+  validateUniqueness(
+    record: RawRecord,
+    seenValues: Map<string, Set<unknown>>,
+  ): ValidationError[] {
+    const errors: ValidationError[] = [];
+    const uniqueFields = this.schema.uniqueFields;
+
+    if (!uniqueFields || uniqueFields.length === 0) return errors;
+
+    for (const fieldName of uniqueFields) {
+      const value = record[fieldName];
+      if (this.isEmpty(value)) continue;
+
+      let seen = seenValues.get(fieldName);
+      if (!seen) {
+        seen = new Set<unknown>();
+        seenValues.set(fieldName, seen);
+      }
+
+      const key = typeof value === 'string' ? value.toLowerCase() : value;
+
+      if (seen.has(key)) {
+        errors.push({
+          field: fieldName,
+          message: `Duplicate value '${String(value)}' for unique field '${fieldName}'`,
+          code: 'DUPLICATE_VALUE',
+          value,
+        });
+      } else {
+        seen.add(key);
+      }
+    }
+
+    return errors;
+  }
+
+  resolveAliases(record: RawRecord): RawRecord {
+    if (this.aliasMap.size === 0) return record;
+
+    const resolved: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(record)) {
+      const canonicalName = this.aliasMap.get(key.toLowerCase());
+      if (canonicalName && !(canonicalName in resolved)) {
+        resolved[canonicalName] = value;
+      } else if (!canonicalName) {
+        resolved[key] = value;
+      }
+    }
+
+    return resolved as RawRecord;
+  }
+
   applyTransforms(record: RawRecord): RawRecord {
     const transformed: Record<string, unknown> = { ...record };
 
     for (const field of this.schema.fields) {
+      if (field.type === 'array' && transformed[field.name] !== undefined) {
+        const raw = transformed[field.name];
+        const separator = field.separator ?? ',';
+        transformed[field.name] = typeof raw === 'string'
+          ? raw.split(separator).map((s) => s.trim()).filter((s) => s !== '')
+          : raw;
+      }
+
       if (field.transform && transformed[field.name] !== undefined) {
         transformed[field.name] = field.transform(transformed[field.name]);
       }
@@ -48,6 +113,24 @@ export class SchemaValidator {
     }
 
     return transformed as RawRecord;
+  }
+
+  isEmptyRow(record: RawRecord): boolean {
+    return Object.values(record).every(
+      (v) => v === undefined || v === null || v === '',
+    );
+  }
+
+  get skipEmptyRows(): boolean {
+    return this.schema.skipEmptyRows ?? false;
+  }
+
+  get hasAliases(): boolean {
+    return this.aliasMap.size > this.schema.fields.length;
+  }
+
+  get hasUniqueFields(): boolean {
+    return (this.schema.uniqueFields ?? []).length > 0;
   }
 
   private validateField(field: FieldDefinition, value: unknown): ValidationError[] {
@@ -65,7 +148,13 @@ export class SchemaValidator {
       return errors;
     }
 
-    if (field.type !== 'custom') {
+    if (field.type === 'array') {
+      const arrayError = this.validateArrayType(field, value);
+      if (arrayError) {
+        errors.push(arrayError);
+        return errors;
+      }
+    } else if (field.type !== 'custom') {
       const typeError = this.validateType(field, value);
       if (typeError) {
         errors.push(typeError);
@@ -98,6 +187,17 @@ export class SchemaValidator {
     }
 
     return errors;
+  }
+
+  private validateArrayType(field: FieldDefinition, value: unknown): ValidationError | null {
+    if (Array.isArray(value) || typeof value === 'string') return null;
+
+    return {
+      field: field.name,
+      message: `Field '${field.name}' must be a string (to be split) or an array`,
+      code: 'TYPE_MISMATCH',
+      value,
+    };
   }
 
   private validateType(field: FieldDefinition, value: unknown): ValidationError | null {
@@ -158,17 +258,25 @@ export class SchemaValidator {
     }
   }
 
-  isEmptyRow(record: RawRecord): boolean {
-    return Object.values(record).every(
-      (v) => v === undefined || v === null || v === '',
-    );
-  }
+  private buildAliasMap(): Map<string, string> {
+    const map = new Map<string, string>();
 
-  get skipEmptyRows(): boolean {
-    return this.schema.skipEmptyRows ?? false;
+    for (const field of this.schema.fields) {
+      map.set(field.name.toLowerCase(), field.name);
+
+      if (field.aliases) {
+        for (const alias of field.aliases) {
+          map.set(alias.toLowerCase(), field.name);
+        }
+      }
+    }
+
+    return map;
   }
 
   private isEmpty(value: unknown): boolean {
-    return value === undefined || value === null || value === '';
+    if (value === undefined || value === null || value === '') return true;
+    if (Array.isArray(value) && value.length === 0) return true;
+    return false;
   }
 }
