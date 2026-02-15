@@ -19,6 +19,9 @@ export type { ValidationResult, ValidationError, ValidationErrorCode } from './d
 export { ImportStatus } from './domain/model/ImportStatus.js';
 export { BatchStatus } from './domain/model/BatchStatus.js';
 
+// Domain services
+export { BatchSplitter } from './domain/services/BatchSplitter.js';
+
 // Ports (for custom implementations)
 export type { SourceParser, ParserOptions } from './domain/ports/SourceParser.js';
 export type { DataSource, SourceMetadata } from './domain/ports/DataSource.js';

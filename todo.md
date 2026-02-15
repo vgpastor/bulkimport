@@ -16,6 +16,7 @@ Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control d
 
 ## Deuda técnica
 
-- [ ] Extraer use cases de `BulkImport` facade a `application/usecases/` (CreateImportJob, StartImport, PauseImport, etc.)
-- [ ] Extraer lógica de batching como domain service reutilizable
+- [x] Extraer use cases de `BulkImport` facade a `application/usecases/` (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus)
+- [x] Extraer lógica de batching como domain service reutilizable (`BatchSplitter`)
+- [x] Mejorar coverage: InMemoryStateStore 63% → 100%, BulkImport branches 74% → 90%
 - [ ] Retry mechanism para registros fallidos

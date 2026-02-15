@@ -14,28 +14,20 @@ src/
 │   ├── model/        # Entities, value objects, state machines (all immutable)
 │   ├── ports/        # Interfaces: DataSource, SourceParser, StateStore, RecordProcessorFn
 │   ├── events/       # Domain events (discriminated unions)
-│   └── services/     # Domain services (SchemaValidator)
-├── application/      # Application layer (EventBus)
+│   └── services/     # Domain services (SchemaValidator, BatchSplitter)
+├── application/      # Application layer (EventBus, ImportJobContext, use cases)
+│   ├── EventBus.ts
+│   ├── ImportJobContext.ts  # Mutable state holder shared across use cases
+│   └── usecases/     # One class per operation
+│       ├── StartImport.ts
+│       ├── PreviewImport.ts
+│       ├── PauseImport.ts
+│       ├── ResumeImport.ts
+│       ├── AbortImport.ts
+│       └── GetImportStatus.ts
 ├── infrastructure/   # Concrete adapters (CsvParser, BufferSource, InMemoryStateStore)
-└── BulkImport.ts     # Facade — orchestrates the import lifecycle
+└── BulkImport.ts     # Facade — thin delegation layer, composition root
 ```
-
-### Target architecture (spec)
-
-The spec envisions a richer `application/` layer with explicit use cases:
-
-```
-src/application/usecases/
-├── CreateImportJob.ts
-├── PreviewImport.ts
-├── StartImport.ts
-├── PauseImport.ts
-├── ResumeImport.ts
-├── AbortImport.ts
-└── GetImportStatus.ts
-```
-
-And a `BatchSplitter` domain service alongside `SchemaValidator`. Currently the facade (`BulkImport.ts`) absorbs all orchestration. Extracting use cases is a future refactor — see `todo.md`.
 
 ### Layer rules
 
@@ -203,7 +195,9 @@ Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lin
 - JSDoc on all public API types, interfaces, methods, and ports.
 - `BulkImport.generateTemplate(schema)` — generate CSV header from schema.
 - CHANGELOG maintained with Keep a Changelog format.
-- 217 acceptance + unit tests passing (including concurrency, state persistence, restore, XML import, edge cases).
+- `BatchSplitter` domain service — reusable async generator that groups a record stream into fixed-size batches. Used internally by `StartImport` use case.
+- `application/usecases/` layer — orchestration extracted from `BulkImport` facade into dedicated use case classes (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus). Shared state lives in `ImportJobContext`.
+- 265 acceptance + unit tests passing (including concurrency, state persistence, restore, XML import, edge cases).
 - npm workspaces configured for monorepo subpackages (`packages/*`).
 - Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
 - Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`.
@@ -215,7 +209,6 @@ Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lin
 
 ### Known Gaps
 
-- `application/usecases/` layer not extracted — all orchestration lives in `BulkImport` facade.
 - No retry mechanism for failed records.
 
 See `todo.md` for the full prioritized backlog.
