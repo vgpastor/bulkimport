@@ -147,9 +147,9 @@ Everything exported from `index.ts` is public API. Changes to exports are breaki
 - `ImportStatus` and `BatchStatus` value enums (runtime exports)
 - Port interfaces (for consumers implementing custom adapters)
 - Domain event types (for typed event handlers)
-- Built-in parsers: `CsvParser`, `JsonParser`
-- Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`
-- Built-in state stores: `InMemoryStateStore`
+- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`
+- Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`
+- Built-in state stores: `InMemoryStateStore`, `FileStateStore`
 
 ## Breaking Changes Policy
 
@@ -177,13 +177,16 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 
 ## Current State & Known Gaps
 
-Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
+Published as `@bulkimport/core@0.2.2`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
 
 ### Implemented
 
 - Streaming batch processing — `start()` parses lazily and processes batch-by-batch, never loading all records in memory.
+- `maxConcurrentBatches` — real batch concurrency via `Promise.race` pool. Default: 1 (sequential). Set > 1 for parallel batch processing.
 - O(1) progress tracking with counters. Percentage includes both processed and failed records.
 - Memory release — `clearBatchRecords()` frees record data after each batch completes.
+- Full StateStore integration — `BulkImport` now calls `saveProcessedRecord()` for every record and `updateBatchState()` for batch transitions. State is persisted after each batch for crash recovery.
+- `BulkImport.restore(jobId, config)` — static method to resume interrupted imports. Rebuilds counters from persisted state and skips already-completed batches.
 - Full validation pipeline (string, number, boolean, date, email, array, custom validators).
 - Array field type with configurable separator — strings are auto-split in `applyTransforms()`.
 - Column aliases — case-insensitive header mapping via `resolveAliases()` on `SchemaValidator`.
@@ -196,8 +199,11 @@ Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lin
 - JSDoc on all public API types, interfaces, methods, and ports.
 - `BulkImport.generateTemplate(schema)` — generate CSV header from schema.
 - CHANGELOG maintained with Keep a Changelog format.
-- 146 acceptance + unit tests passing (including edge cases, schema-advanced features, multiple parsers/sources).
+- 186 acceptance + unit tests passing (including concurrency, state persistence, restore, XML import, edge cases).
 - npm workspaces configured for monorepo subpackages (`packages/*`).
+- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
+- Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`.
+- Built-in state stores: `InMemoryStateStore`, `FileStateStore`.
 
 ### Subpackages
 
@@ -205,13 +211,7 @@ Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lin
 
 ### Known Gaps
 
-- `maxConcurrentBatches` is declared in config types but not implemented — batches process sequentially.
-- `StateStore` port is partially used — `BulkImport` calls `saveJobState()` but not `saveProcessedRecord()` or query methods. In-memory counters are the source of truth during execution.
-- `BulkImport.restore()` static method not implemented (resume from persisted state after crash).
 - `application/usecases/` layer not extracted — all orchestration lives in `BulkImport` facade.
-- Missing parsers: `XmlParser`.
-- Missing sources: `UrlSource`.
-- Missing state stores: `FileStateStore`.
 - No retry mechanism for failed records.
 
 See `todo.md` for the full prioritized backlog.

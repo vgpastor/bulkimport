@@ -428,6 +428,7 @@ The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and 
 | Method | Description |
 |---|---|
 | `static generateTemplate(schema)` | Generate a CSV header line from schema field names. |
+| `static restore(jobId, config)` | Restore an interrupted import from persisted state. Returns `null` if not found. |
 | `from(source, parser)` | Set the data source and parser. Returns `this` for chaining. |
 | `on(event, handler)` | Subscribe to a lifecycle event. Returns `this`. |
 | `preview(maxRecords?)` | Validate a sample of records without processing. |
@@ -446,8 +447,54 @@ The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and 
 |---|---|---|---|
 | `schema` | `SchemaDefinition` | required | Field definitions, validation rules, `skipEmptyRows`, `strict`, `uniqueFields` |
 | `batchSize` | `number` | `100` | Records per batch |
+| `maxConcurrentBatches` | `number` | `1` | Number of batches to process in parallel |
 | `continueOnError` | `boolean` | `false` | Keep processing when a record fails |
 | `stateStore` | `StateStore` | `InMemoryStateStore` | Where to persist job state |
+
+## Concurrent Batch Processing
+
+Process multiple batches in parallel for higher throughput:
+
+```typescript
+const importer = new BulkImport({
+  schema: { fields: [...] },
+  batchSize: 500,
+  maxConcurrentBatches: 4, // Process 4 batches at a time
+  continueOnError: true,
+});
+```
+
+With `maxConcurrentBatches: 1` (default), batches are processed sequentially. Set a higher value when the processor callback involves I/O (database inserts, API calls) and the downstream system can handle parallel writes.
+
+## Restore Interrupted Imports
+
+Resume imports that were interrupted by crashes, deploys, or timeouts:
+
+```typescript
+import { BulkImport, CsvParser, FilePathSource, FileStateStore } from '@bulkimport/core';
+
+const stateStore = new FileStateStore({ directory: '.bulkimport' });
+
+// First run — may be interrupted
+const importer = new BulkImport({
+  schema: { fields: [...] },
+  stateStore,
+});
+importer.from(new FilePathSource('data.csv'), new CsvParser());
+await importer.start(processor);
+const jobId = importer.getJobId();
+
+// After restart — restore and continue
+const restored = await BulkImport.restore(jobId, {
+  schema: { fields: [...] }, // Same schema
+  stateStore,
+});
+
+if (restored) {
+  restored.from(new FilePathSource('data.csv'), new CsvParser());
+  await restored.start(processor); // Skips already-completed batches
+}
+```
 
 ## Built-in Adapters
 
@@ -455,10 +502,13 @@ The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and 
 |---|---|---|
 | `CsvParser` | Parser | CSV parsing with auto-delimiter detection (uses PapaParse) |
 | `JsonParser` | Parser | JSON array and NDJSON with auto-detection. Nested objects flattened to strings |
+| `XmlParser` | Parser | XML parsing with auto record-tag detection. Zero dependencies |
 | `BufferSource` | Source | Read from a string or Buffer in memory |
 | `FilePathSource` | Source | Stream from a file path with configurable chunk size (Node.js only) |
 | `StreamSource` | Source | Accept `AsyncIterable` or `ReadableStream` (ideal for upload streams) |
+| `UrlSource` | Source | Fetch and stream from a URL (requires `fetch` — Node.js >= 18) |
 | `InMemoryStateStore` | State | Non-persistent state store (default) |
+| `FileStateStore` | State | JSON files on disk — persistent across restarts (Node.js only) |
 
 ### Companion Packages
 

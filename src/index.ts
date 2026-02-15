@@ -46,9 +46,15 @@ export type {
 export { CsvParser } from './infrastructure/parsers/CsvParser.js';
 export { JsonParser } from './infrastructure/parsers/JsonParser.js';
 export type { JsonParserOptions } from './infrastructure/parsers/JsonParser.js';
+export { XmlParser } from './infrastructure/parsers/XmlParser.js';
+export type { XmlParserOptions } from './infrastructure/parsers/XmlParser.js';
 export { BufferSource } from './infrastructure/sources/BufferSource.js';
 export { FilePathSource } from './infrastructure/sources/FilePathSource.js';
 export type { FilePathSourceOptions } from './infrastructure/sources/FilePathSource.js';
 export { StreamSource } from './infrastructure/sources/StreamSource.js';
 export type { StreamSourceOptions } from './infrastructure/sources/StreamSource.js';
+export { UrlSource } from './infrastructure/sources/UrlSource.js';
+export type { UrlSourceOptions } from './infrastructure/sources/UrlSource.js';
 export { InMemoryStateStore } from './infrastructure/state/InMemoryStateStore.js';
+export { FileStateStore } from './infrastructure/state/FileStateStore.js';
+export type { FileStateStoreOptions } from './infrastructure/state/FileStateStore.js';

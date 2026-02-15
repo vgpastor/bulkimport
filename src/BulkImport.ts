@@ -21,7 +21,7 @@ export interface BulkImportConfig {
   readonly schema: SchemaDefinition;
   /** Number of records per batch. Default: `100`. */
   readonly batchSize?: number;
-  /** Maximum concurrent batches (not yet implemented — batches run sequentially). */
+  /** Maximum number of batches to process concurrently. Default: `1` (sequential). */
   readonly maxConcurrentBatches?: number;
   /** When `true`, processing continues after a record fails validation or processing. Default: `false`. */
   readonly continueOnError?: boolean;
@@ -40,7 +40,8 @@ export interface BulkImportConfig {
  * ```
  */
 export class BulkImport {
-  private readonly config: Required<Pick<BulkImportConfig, 'batchSize' | 'continueOnError'>> & BulkImportConfig;
+  private readonly config: Required<Pick<BulkImportConfig, 'batchSize' | 'continueOnError' | 'maxConcurrentBatches'>> &
+    BulkImportConfig;
   private readonly validator: SchemaValidator;
   private readonly eventBus: EventBus;
   private readonly stateStore: StateStore;
@@ -57,6 +58,7 @@ export class BulkImport {
   private failedRecordsAccum: ProcessedRecord[] = [];
   private seenUniqueValues = new Map<string, Set<unknown>>();
   private startedAt?: number;
+  private completedBatchIndices = new Set<number>();
 
   private abortController: AbortController | null = null;
   private pausePromise: { resolve: () => void; promise: Promise<void> } | null = null;
@@ -66,6 +68,7 @@ export class BulkImport {
       ...config,
       batchSize: config.batchSize ?? 100,
       continueOnError: config.continueOnError ?? false,
+      maxConcurrentBatches: config.maxConcurrentBatches ?? 1,
     };
     this.validator = new SchemaValidator(config.schema);
     this.eventBus = new EventBus();
@@ -74,16 +77,58 @@ export class BulkImport {
   }
 
   /**
+   * Restore an import job from persisted state.
+   *
+   * Loads the job state from the configured `StateStore` and re-creates a
+   * `BulkImport` instance positioned to resume processing. Only batches not
+   * yet completed will be re-processed when `start()` is called again.
+   *
+   * The caller must provide a `BulkImportConfig` with the same schema and a
+   * `stateStore` that contains the persisted state. Non-serializable fields
+   * (`customValidator`, `transform`, `pattern`) must be re-provided in the
+   * schema since they cannot be persisted.
+   *
+   * @param jobId - The job ID to restore.
+   * @param config - Configuration with stateStore that holds the persisted state.
+   * @returns A `BulkImport` instance ready to resume, or `null` if the job was not found.
+   */
+  static async restore(jobId: string, config: BulkImportConfig): Promise<BulkImport | null> {
+    const stateStore = config.stateStore ?? new InMemoryStateStore();
+    const jobState = await stateStore.getJobState(jobId);
+
+    if (!jobState) return null;
+
+    const instance = new BulkImport(config);
+    instance.jobId = jobId;
+    instance.status = jobState.status;
+    instance.batches = [...jobState.batches];
+    instance.totalRecords = jobState.totalRecords;
+    instance.startedAt = jobState.startedAt;
+
+    // Rebuild counters from batch data
+    for (const batch of jobState.batches) {
+      if (batch.status === 'COMPLETED') {
+        instance.processedCount += batch.processedCount;
+        instance.failedCount += batch.failedCount;
+        instance.completedBatchIndices.add(batch.index);
+      }
+    }
+
+    // Load failed records from state store
+    const failedRecords = await stateStore.getFailedRecords(jobId);
+    instance.failedRecordsAccum = [...failedRecords];
+
+    // Reset to CREATED so start() can be called
+    instance.status = 'CREATED';
+
+    return instance;
+  }
+
+  /**
    * Generate a CSV header template from a schema definition.
    *
    * Returns a single CSV line with all field names, useful for letting
    * frontends download a template that stays in sync with the schema.
-   *
-   * @example
-   * ```typescript
-   * const csv = BulkImport.generateTemplate(schema);
-   * // → "email,name,age"
-   * ```
    */
   static generateTemplate(schema: SchemaDefinition): string {
     return schema.fields.map((f) => f.name).join(',');
@@ -149,6 +194,7 @@ export class BulkImport {
    * Begin processing all records through the provided callback.
    *
    * Records are parsed lazily (streamed) and processed batch-by-batch.
+   * When `maxConcurrentBatches > 1`, multiple batches are processed in parallel.
    * Memory is released after each batch completes.
    *
    * @throws Error if source/parser not configured or import already started.
@@ -159,14 +205,17 @@ export class BulkImport {
 
     this.transitionTo('PROCESSING');
     this.abortController = new AbortController();
-    this.startedAt = Date.now();
+    this.startedAt = this.startedAt ?? Date.now();
 
-    this.processedCount = 0;
-    this.failedCount = 0;
-    this.failedRecordsAccum = [];
-    this.seenUniqueValues = new Map();
-    this.batches = [];
-    this.totalRecords = 0;
+    // Only reset counters if this is a fresh start (not a restore)
+    if (this.completedBatchIndices.size === 0) {
+      this.processedCount = 0;
+      this.failedCount = 0;
+      this.failedRecordsAccum = [];
+      this.seenUniqueValues = new Map();
+      this.batches = [];
+      this.totalRecords = 0;
+    }
 
     const source = this.source;
     const parser = this.parser;
@@ -177,39 +226,17 @@ export class BulkImport {
     this.eventBus.emit({
       type: 'import:started',
       jobId: this.jobId,
-      totalRecords: 0,
-      totalBatches: 0,
+      totalRecords: this.totalRecords,
+      totalBatches: this.batches.length,
       timestamp: Date.now(),
     });
 
     try {
-      let batchIndex = 0;
-      let recordIndex = 0;
-      let batchBuffer: ProcessedRecord[] = [];
-
-      for await (const chunk of source.read()) {
-        for await (const raw of parser.parse(chunk)) {
-          if (this.abortController.signal.aborted) break;
-          await this.checkPause();
-
-          batchBuffer.push(createPendingRecord(recordIndex, raw));
-          recordIndex++;
-          this.totalRecords = recordIndex;
-
-          if (batchBuffer.length >= this.config.batchSize) {
-            await this.processStreamBatch(batchBuffer, batchIndex, processor);
-            batchBuffer = [];
-            batchIndex++;
-          }
-        }
-        if (this.abortController.signal.aborted) break;
+      if (this.config.maxConcurrentBatches > 1) {
+        await this.processWithConcurrency(source, parser, processor);
+      } else {
+        await this.processSequentially(source, parser, processor);
       }
-
-      if (batchBuffer.length > 0 && !this.abortController.signal.aborted && this.status !== 'ABORTED') {
-        await this.processStreamBatch(batchBuffer, batchIndex, processor);
-      }
-
-      this.totalRecords = recordIndex;
 
       if (!this.abortController.signal.aborted && this.status !== 'ABORTED') {
         this.transitionTo('COMPLETED');
@@ -322,7 +349,103 @@ export class BulkImport {
     return this.jobId;
   }
 
-  // --- Private methods ---
+  // --- Sequential processing (maxConcurrentBatches === 1) ---
+
+  private async processSequentially(
+    source: DataSource,
+    parser: SourceParser,
+    processor: RecordProcessorFn,
+  ): Promise<void> {
+    let batchIndex = 0;
+    let recordIndex = this.totalRecords;
+    let batchBuffer: ProcessedRecord[] = [];
+
+    for await (const chunk of source.read()) {
+      for await (const raw of parser.parse(chunk)) {
+        if (this.abortController?.signal.aborted) break;
+        await this.checkPause();
+
+        batchBuffer.push(createPendingRecord(recordIndex, raw));
+        recordIndex++;
+        this.totalRecords = recordIndex;
+
+        if (batchBuffer.length >= this.config.batchSize) {
+          if (!this.completedBatchIndices.has(batchIndex)) {
+            await this.processStreamBatch(batchBuffer, batchIndex, processor);
+          }
+          batchBuffer = [];
+          batchIndex++;
+        }
+      }
+      if (this.abortController?.signal.aborted) break;
+    }
+
+    if (batchBuffer.length > 0 && !this.abortController?.signal.aborted && this.status !== 'ABORTED') {
+      if (!this.completedBatchIndices.has(batchIndex)) {
+        await this.processStreamBatch(batchBuffer, batchIndex, processor);
+      }
+    }
+
+    this.totalRecords = recordIndex;
+  }
+
+  // --- Concurrent processing (maxConcurrentBatches > 1) ---
+
+  private async processWithConcurrency(
+    source: DataSource,
+    parser: SourceParser,
+    processor: RecordProcessorFn,
+  ): Promise<void> {
+    const maxConcurrency = this.config.maxConcurrentBatches;
+    let batchIndex = 0;
+    let recordIndex = this.totalRecords;
+    let batchBuffer: ProcessedRecord[] = [];
+    const activeBatches: Promise<void>[] = [];
+
+    const enqueueBatch = async (records: ProcessedRecord[], idx: number): Promise<void> => {
+      if (this.completedBatchIndices.has(idx)) return;
+
+      // Wait if we've reached the concurrency limit
+      while (activeBatches.length >= maxConcurrency) {
+        await Promise.race(activeBatches);
+      }
+
+      const batchPromise: Promise<void> = this.processStreamBatch(records, idx, processor).then(() => {
+        const pos = activeBatches.indexOf(batchPromise);
+        if (pos >= 0) void activeBatches.splice(pos, 1);
+      });
+      activeBatches.push(batchPromise);
+    };
+
+    for await (const chunk of source.read()) {
+      for await (const raw of parser.parse(chunk)) {
+        if (this.abortController?.signal.aborted) break;
+        await this.checkPause();
+
+        batchBuffer.push(createPendingRecord(recordIndex, raw));
+        recordIndex++;
+        this.totalRecords = recordIndex;
+
+        if (batchBuffer.length >= this.config.batchSize) {
+          await enqueueBatch(batchBuffer, batchIndex);
+          batchBuffer = [];
+          batchIndex++;
+        }
+      }
+      if (this.abortController?.signal.aborted) break;
+    }
+
+    if (batchBuffer.length > 0 && !this.abortController?.signal.aborted && this.status !== 'ABORTED') {
+      await enqueueBatch(batchBuffer, batchIndex);
+    }
+
+    // Wait for all remaining batches to complete
+    await Promise.all(activeBatches);
+
+    this.totalRecords = recordIndex;
+  }
+
+  // --- Batch processing ---
 
   private async processStreamBatch(
     records: ProcessedRecord[],
@@ -334,6 +457,12 @@ export class BulkImport {
     this.batches.push(batch);
 
     this.updateBatchStatus(batchId, 'PROCESSING');
+    await this.stateStore.updateBatchState(this.jobId, batchId, {
+      batchId,
+      status: 'PROCESSING',
+      processedCount: 0,
+      failedCount: 0,
+    });
 
     this.eventBus.emit({
       type: 'batch:started',
@@ -371,6 +500,8 @@ export class BulkImport {
         this.failedRecordsAccum.push(invalidRecord);
         failedCount++;
 
+        await this.stateStore.saveProcessedRecord(this.jobId, batchId, invalidRecord);
+
         this.eventBus.emit({
           type: 'record:failed',
           jobId: this.jobId,
@@ -404,6 +535,11 @@ export class BulkImport {
         this.processedCount++;
         processedCount++;
 
+        await this.stateStore.saveProcessedRecord(this.jobId, batchId, {
+          ...validRecord,
+          status: 'processed',
+        });
+
         this.eventBus.emit({
           type: 'record:processed',
           jobId: this.jobId,
@@ -416,6 +552,8 @@ export class BulkImport {
         this.failedCount++;
         this.failedRecordsAccum.push(failedRecord);
         failedCount++;
+
+        await this.stateStore.saveProcessedRecord(this.jobId, batchId, failedRecord);
 
         this.eventBus.emit({
           type: 'record:failed',
@@ -434,6 +572,14 @@ export class BulkImport {
     }
 
     this.updateBatchStatus(batchId, 'COMPLETED', processedCount, failedCount);
+    this.completedBatchIndices.add(batchIndex);
+
+    await this.stateStore.updateBatchState(this.jobId, batchId, {
+      batchId,
+      status: 'COMPLETED',
+      processedCount,
+      failedCount,
+    });
 
     // Clear records from batch to release memory
     const batchPos = this.batches.findIndex((b) => b.id === batchId);
@@ -456,6 +602,9 @@ export class BulkImport {
     });
 
     this.emitProgress();
+
+    // Persist state after each batch for crash recovery
+    await this.saveState();
   }
 
   private async parseRecords(maxRecords?: number): Promise<ProcessedRecord[]> {
