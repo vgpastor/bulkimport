@@ -79,9 +79,7 @@ describe('FileStateStore', () => {
   describe('updateBatchState', () => {
     it('should update batch status within job state', async () => {
       const job = createJobState({
-        batches: [
-          { id: 'batch-1', index: 0, status: 'PROCESSING', records: [], processedCount: 0, failedCount: 0 },
-        ],
+        batches: [{ id: 'batch-1', index: 0, status: 'PROCESSING', records: [], processedCount: 0, failedCount: 0 }],
       });
       await store.saveJobState(job);
 
@@ -158,9 +156,7 @@ describe('FileStateStore', () => {
     it('should compute progress from persisted records', async () => {
       const job = createJobState({
         totalRecords: 5,
-        batches: [
-          { id: 'b-1', index: 0, status: 'COMPLETED', records: [], processedCount: 3, failedCount: 0 },
-        ],
+        batches: [{ id: 'b-1', index: 0, status: 'COMPLETED', records: [], processedCount: 3, failedCount: 0 }],
       });
       await store.saveJobState(job);
 

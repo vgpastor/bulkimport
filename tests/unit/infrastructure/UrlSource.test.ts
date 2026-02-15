@@ -12,7 +12,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function createMockResponse(body: string, options?: { status?: number; statusText?: string; headers?: Record<string, string> }): Response {
+function createMockResponse(
+  body: string,
+  options?: { status?: number; statusText?: string; headers?: Record<string, string> },
+): Response {
   const status = options?.status ?? 200;
   const statusText = options?.statusText ?? 'OK';
 
@@ -67,10 +70,7 @@ describe('UrlSource', () => {
 
       expect(chunks).toHaveLength(1);
       expect(chunks[0]).toBe(content);
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/data.csv',
-        expect.objectContaining({ headers: {} }),
-      );
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/data.csv', expect.objectContaining({ headers: {} }));
     });
 
     it('should stream response body when available', async () => {

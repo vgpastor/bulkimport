@@ -71,9 +71,7 @@ export class XmlParser implements SourceParser {
     const rootTag = rootMatch[1];
 
     // Find children of root
-    const childRegex = new RegExp(
-      `<${rootTag}[^>]*>[\\s\\S]*?<([a-zA-Z_][\\w.-]*)[^>]*>`,
-    );
+    const childRegex = new RegExp(`<${rootTag}[^>]*>[\\s\\S]*?<([a-zA-Z_][\\w.-]*)[^>]*>`);
     const childMatch = childRegex.exec(content);
     if (!childMatch?.[1]) return null;
 

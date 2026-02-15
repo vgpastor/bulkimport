@@ -47,9 +47,7 @@ describe('XML Import', () => {
     });
 
     expect(processed).toHaveLength(3);
-    expect(processed[0]).toEqual(
-      expect.objectContaining({ email: 'alice@test.com', name: 'Alice', age: '30' }),
-    );
+    expect(processed[0]).toEqual(expect.objectContaining({ email: 'alice@test.com', name: 'Alice', age: '30' }));
 
     const status = importer.getStatus();
     expect(status.state).toBe('COMPLETED');
