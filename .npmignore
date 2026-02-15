@@ -17,6 +17,9 @@ todo.md
 coverage/
 .github/
 
+# Workspace packages (not part of core)
+packages/
+
 # OS files
 .DS_Store
 Thumbs.db

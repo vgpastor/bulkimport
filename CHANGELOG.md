@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`@bulkimport/state-sequelize`** — new subpackage implementing `StateStore` port with Sequelize v6. Persists job state and processed records to any SQL database (PostgreSQL, MySQL, SQLite, etc.). Lives in `packages/state-sequelize/` as a separate npm package. 40 tests (unit + integration with SQLite in-memory).
+- `BatchState` type exported from `@bulkimport/core` — required by `StateStore` implementors.
+- npm workspaces configured at root for monorepo subpackages.
 - **Array field type** — declare fields as `{ type: 'array', separator: ';' }` to auto-split comma/custom-separated strings into arrays during `applyTransforms()`. Accepts string or array values. Empty arrays `[]` are treated as empty for required field validation.
 - **Column aliases** — declare `aliases: ['correo', 'mail']` on field definitions for case-insensitive header mapping via `resolveAliases()`. Canonical field names are always resolved (even without explicit aliases), enabling case-insensitive header matching.
 - **Unique field duplicate detection** — declare `uniqueFields: ['identifier']` on schema to detect duplicate values across the entire import. Cross-batch tracking via `seenUniqueValues` Map. Case-insensitive for strings. Empty values are skipped. Produces `DUPLICATE_VALUE` validation error code.

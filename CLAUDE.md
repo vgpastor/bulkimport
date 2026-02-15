@@ -197,6 +197,11 @@ Published as `@bulkimport/core@0.1.0`. CI/CD configured with GitHub Actions (lin
 - `BulkImport.generateTemplate(schema)` — generate CSV header from schema.
 - CHANGELOG maintained with Keep a Changelog format.
 - 146 acceptance + unit tests passing (including edge cases, schema-advanced features, multiple parsers/sources).
+- npm workspaces configured for monorepo subpackages (`packages/*`).
+
+### Subpackages
+
+- **`@bulkimport/state-sequelize`** (`packages/state-sequelize/`) — Sequelize v6 adapter for the `StateStore` port. Persists job state and records to SQL databases. 40 tests (19 unit + 21 integration with SQLite in-memory). Separate npm package with `peerDependencies` on `@bulkimport/core` and `sequelize`.
 
 ### Known Gaps
 

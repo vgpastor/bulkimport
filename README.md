@@ -376,6 +376,51 @@ const importer = new BulkImport({
 });
 ```
 
+#### Ready-made: Sequelize adapter
+
+If you use Sequelize v6, install the official adapter instead of writing your own:
+
+```bash
+npm install @bulkimport/state-sequelize
+```
+
+```typescript
+import { BulkImport, CsvParser, BufferSource } from '@bulkimport/core';
+import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { Sequelize } from 'sequelize';
+
+// Use your existing Sequelize instance
+const sequelize = new Sequelize('postgres://user:pass@localhost:5432/mydb');
+
+// Create and initialize (creates tables if they don't exist)
+const stateStore = new SequelizeStateStore(sequelize);
+await stateStore.initialize();
+
+const importer = new BulkImport({
+  schema: {
+    fields: [
+      { name: 'email', type: 'email', required: true },
+      { name: 'name', type: 'string', required: true },
+    ],
+  },
+  batchSize: 500,
+  continueOnError: true,
+  stateStore, // Persists job state and records to your database
+});
+
+importer.from(new BufferSource(csvString), new CsvParser());
+
+await importer.start(async (record) => {
+  await sequelize.models.User.create(record);
+});
+
+// After processing, query persisted state directly
+const failedRecords = await stateStore.getFailedRecords(importer.getJobId());
+const progress = await stateStore.getProgress(importer.getJobId());
+```
+
+The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and works with any Sequelize-supported dialect: PostgreSQL, MySQL, MariaDB, SQLite, or MS SQL Server. See the [state-sequelize README](./packages/state-sequelize/README.md) for details.
+
 ## API Reference
 
 ### `BulkImport`
@@ -414,6 +459,12 @@ const importer = new BulkImport({
 | `FilePathSource` | Source | Stream from a file path with configurable chunk size (Node.js only) |
 | `StreamSource` | Source | Accept `AsyncIterable` or `ReadableStream` (ideal for upload streams) |
 | `InMemoryStateStore` | State | Non-persistent state store (default) |
+
+### Companion Packages
+
+| Package | Description |
+|---|---|
+| [`@bulkimport/state-sequelize`](./packages/state-sequelize/) | Sequelize v6 adapter for `StateStore`. Persists to PostgreSQL, MySQL, SQLite, etc. |
 
 ## Requirements
 

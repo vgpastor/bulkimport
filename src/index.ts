@@ -15,7 +15,7 @@ export { BatchStatus } from './domain/model/BatchStatus.js';
 // Ports (for custom implementations)
 export type { SourceParser, ParserOptions } from './domain/ports/SourceParser.js';
 export type { DataSource, SourceMetadata } from './domain/ports/DataSource.js';
-export type { StateStore } from './domain/ports/StateStore.js';
+export type { StateStore, BatchState } from './domain/ports/StateStore.js';
 export type { RecordProcessorFn, ProcessingContext } from './domain/ports/RecordProcessor.js';
 
 // Domain events

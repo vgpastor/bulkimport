@@ -28,7 +28,8 @@ Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control d
 ## Ideas de usuarios (bajo evaluación)
 
 - [ ] **Modo upsert** — config de import mode: `'insert' | 'upsert' | 'update-only'` con `matchBy: ['identifier']`. Requiere decidir si es responsabilidad del domain model o solo un pass-through en el context del processor.
-- [ ] **Adaptadores de StateStore para persistencia real** — SequelizeStateStore, PrismaStateStore, RedisStateStore. Prerequisito: completar Fase 6. Evaluar si deben vivir en paquetes separados.
+- [x] **SequelizeStateStore** — implementado como subpaquete `@bulkimport/state-sequelize` en `packages/state-sequelize/`. Compatible con Sequelize v6.
+- [ ] **Adaptadores de StateStore adicionales** — PrismaStateStore, RedisStateStore. Evaluar si deben vivir en paquetes separados.
 
 ---
 
