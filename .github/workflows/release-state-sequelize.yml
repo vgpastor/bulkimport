@@ -52,7 +52,7 @@ jobs:
           fi
       - name: Publish
         working-directory: packages/state-sequelize
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --ignore-scripts
 
   github-release:
     name: GitHub Release

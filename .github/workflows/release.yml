@@ -47,7 +47,7 @@ jobs:
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
             exit 1
           fi
-      - run: npm publish --access public --provenance
+      - run: npm publish --access public --provenance --ignore-scripts
 
   github-release:
     name: GitHub Release
