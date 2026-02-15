@@ -24,12 +24,17 @@ export class EventBus {
     }
   }
 
-  /** Emit a domain event to all registered handlers. */
+  /** Emit a domain event to all registered handlers. A throwing handler does not prevent others from executing. */
   emit(event: DomainEvent): void {
     const handlers = this.handlers.get(event.type);
     if (handlers) {
       for (const handler of handlers) {
-        handler(event);
+        try {
+          handler(event);
+        } catch {
+          // Swallow handler errors so one broken subscriber cannot
+          // disrupt the import pipeline or prevent other handlers from running.
+        }
       }
     }
   }

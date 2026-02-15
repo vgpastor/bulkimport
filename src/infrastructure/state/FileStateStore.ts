@@ -16,10 +16,14 @@ export interface FileStateStoreOptions {
  * - `{jobId}.json` — job state (config, status, batches, counters)
  * - `{jobId}.records.json` — processed records (for recovery)
  *
+ * Uses an in-memory Map cache per job for O(1) record upserts during
+ * processing, flushing to disk after each write.
+ *
  * Node.js only. Not suitable for browsers.
  */
 export class FileStateStore implements StateStore {
   private readonly directory: string;
+  private readonly recordCache = new Map<string, Map<number, ProcessedRecord>>();
 
   constructor(options?: FileStateStoreOptions) {
     this.directory = options?.directory ?? '.bulkimport';
@@ -54,14 +58,9 @@ export class FileStateStore implements StateStore {
   }
 
   async saveProcessedRecord(jobId: string, _batchId: string, record: ProcessedRecord): Promise<void> {
-    const records = await this.loadRecords(jobId);
-    const index = records.findIndex((r) => r.index === record.index);
-    if (index >= 0) {
-      records[index] = record;
-    } else {
-      records.push(record);
-    }
-    await this.saveRecords(jobId, records);
+    const recordMap = await this.getRecordMap(jobId);
+    recordMap.set(record.index, record);
+    await this.flushRecords(jobId, recordMap);
   }
 
   async getFailedRecords(jobId: string): Promise<readonly ProcessedRecord[]> {
@@ -103,6 +102,21 @@ export class FileStateStore implements StateStore {
     };
   }
 
+  private async getRecordMap(jobId: string): Promise<Map<number, ProcessedRecord>> {
+    let cached = this.recordCache.get(jobId);
+    if (cached) return cached;
+
+    const records = await this.loadRecords(jobId);
+    cached = new Map(records.map((r) => [r.index, r]));
+    this.recordCache.set(jobId, cached);
+    return cached;
+  }
+
+  private async flushRecords(jobId: string, recordMap: Map<number, ProcessedRecord>): Promise<void> {
+    await this.ensureDirectory();
+    await writeFile(this.recordsFilePath(jobId), JSON.stringify([...recordMap.values()]), 'utf-8');
+  }
+
   private async loadRecords(jobId: string): Promise<ProcessedRecord[]> {
     try {
       const content = await readFile(this.recordsFilePath(jobId), 'utf-8');
@@ -110,11 +124,6 @@ export class FileStateStore implements StateStore {
     } catch {
       return [];
     }
-  }
-
-  private async saveRecords(jobId: string, records: ProcessedRecord[]): Promise<void> {
-    await this.ensureDirectory();
-    await writeFile(this.recordsFilePath(jobId), JSON.stringify(records), 'utf-8');
   }
 
   private async ensureDirectory(): Promise<void> {

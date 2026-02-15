@@ -2,6 +2,7 @@ import { createReadStream, statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import type { DataSource, SourceMetadata } from '../../domain/ports/DataSource.js';
+import { detectMimeType } from '../detectMimeType.js';
 
 export interface FilePathSourceOptions {
   /** Encoding for reading the file. Default: 'utf-8'. */
@@ -63,18 +64,6 @@ export class FilePathSource implements DataSource {
   }
 
   private detectMimeType(): string {
-    const ext = this.filePath.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'csv':
-        return 'text/csv';
-      case 'json':
-        return 'application/json';
-      case 'xml':
-        return 'application/xml';
-      case 'tsv':
-        return 'text/tab-separated-values';
-      default:
-        return 'text/plain';
-    }
+    return detectMimeType(this.filePath);
   }
 }

@@ -81,4 +81,58 @@ describe('EventBus', () => {
 
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it('should not propagate errors from throwing handlers', () => {
+    const bus = new EventBus();
+
+    bus.on('import:started', () => {
+      throw new Error('handler exploded');
+    });
+
+    expect(() => {
+      bus.emit({
+        type: 'import:started',
+        jobId: 'test-job',
+        totalRecords: 100,
+        totalBatches: 10,
+        timestamp: Date.now(),
+      });
+    }).not.toThrow();
+  });
+
+  it('should continue calling other handlers when one throws', () => {
+    const bus = new EventBus();
+    const handler1 = vi.fn(() => {
+      throw new Error('first handler fails');
+    });
+    const handler2 = vi.fn();
+
+    bus.on('import:started', handler1);
+    bus.on('import:started', handler2);
+
+    bus.emit({
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 100,
+      totalBatches: 10,
+      timestamp: Date.now(),
+    });
+
+    expect(handler1).toHaveBeenCalledOnce();
+    expect(handler2).toHaveBeenCalledOnce();
+  });
+
+  it('should do nothing when emitting event with no handlers', () => {
+    const bus = new EventBus();
+
+    expect(() => {
+      bus.emit({
+        type: 'import:started',
+        jobId: 'test-job',
+        totalRecords: 0,
+        totalBatches: 0,
+        timestamp: Date.now(),
+      });
+    }).not.toThrow();
+  });
 });

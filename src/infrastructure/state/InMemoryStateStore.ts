@@ -5,7 +5,7 @@ import type { ProcessedRecord } from '../../domain/model/Record.js';
 /** Non-persistent in-memory state store. Used as the default when no custom StateStore is provided. */
 export class InMemoryStateStore implements StateStore {
   private jobs = new Map<string, ImportJobState>();
-  private records = new Map<string, ProcessedRecord[]>();
+  private records = new Map<string, Map<number, ProcessedRecord>>();
 
   saveJobState(job: ImportJobState): Promise<void> {
     this.jobs.set(job.id, job);
@@ -31,36 +31,37 @@ export class InMemoryStateStore implements StateStore {
   }
 
   saveProcessedRecord(jobId: string, _batchId: string, record: ProcessedRecord): Promise<void> {
-    const key = jobId;
-    const existing = this.records.get(key) ?? [];
-    const index = existing.findIndex((r) => r.index === record.index);
-    if (index >= 0) {
-      existing[index] = record;
-    } else {
-      existing.push(record);
+    let recordMap = this.records.get(jobId);
+    if (!recordMap) {
+      recordMap = new Map();
+      this.records.set(jobId, recordMap);
     }
-    this.records.set(key, existing);
+    recordMap.set(record.index, record);
     return Promise.resolve();
   }
 
   getFailedRecords(jobId: string): Promise<readonly ProcessedRecord[]> {
-    const all = this.records.get(jobId) ?? [];
-    return Promise.resolve(all.filter((r) => r.status === 'failed' || r.status === 'invalid'));
+    const recordMap = this.records.get(jobId);
+    if (!recordMap) return Promise.resolve([]);
+    return Promise.resolve([...recordMap.values()].filter((r) => r.status === 'failed' || r.status === 'invalid'));
   }
 
   getPendingRecords(jobId: string): Promise<readonly ProcessedRecord[]> {
-    const all = this.records.get(jobId) ?? [];
-    return Promise.resolve(all.filter((r) => r.status === 'pending' || r.status === 'valid'));
+    const recordMap = this.records.get(jobId);
+    if (!recordMap) return Promise.resolve([]);
+    return Promise.resolve([...recordMap.values()].filter((r) => r.status === 'pending' || r.status === 'valid'));
   }
 
   getProcessedRecords(jobId: string): Promise<readonly ProcessedRecord[]> {
-    const all = this.records.get(jobId) ?? [];
-    return Promise.resolve(all.filter((r) => r.status === 'processed'));
+    const recordMap = this.records.get(jobId);
+    if (!recordMap) return Promise.resolve([]);
+    return Promise.resolve([...recordMap.values()].filter((r) => r.status === 'processed'));
   }
 
   getProgress(jobId: string): Promise<ImportProgress> {
     const job = this.jobs.get(jobId);
-    const all = this.records.get(jobId) ?? [];
+    const recordMap = this.records.get(jobId);
+    const all = recordMap ? [...recordMap.values()] : [];
     const processed = all.filter((r) => r.status === 'processed').length;
     const failed = all.filter((r) => r.status === 'failed' || r.status === 'invalid').length;
     const total = job?.totalRecords ?? all.length;

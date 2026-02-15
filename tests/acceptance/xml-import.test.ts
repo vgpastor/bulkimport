@@ -89,7 +89,7 @@ describe('XML Import', () => {
     });
 
     expect(processed).toHaveLength(1);
-    expect(importer.getFailedRecords()).toHaveLength(1);
+    expect(await importer.getFailedRecords()).toHaveLength(1);
     expect(importer.getStatus().state).toBe('COMPLETED');
   });
 

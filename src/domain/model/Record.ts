@@ -22,6 +22,8 @@ export interface ProcessedRecord {
   readonly errors: readonly ValidationError[];
   /** Error message from the processor callback (populated when `status` is `'failed'`). */
   readonly processingError?: string;
+  /** Number of retry attempts made before final success or failure. Default: `0`. */
+  readonly retryCount?: number;
 }
 
 /** Create a new record in `pending` status. */
@@ -48,4 +50,9 @@ export function markRecordInvalid(record: ProcessedRecord, errors: readonly Vali
 /** Transition a record to `failed` status with a processing error. */
 export function markRecordFailed(record: ProcessedRecord, error: string): ProcessedRecord {
   return { ...record, status: 'failed', processingError: error };
+}
+
+/** Check whether every value in a raw record is empty (`undefined`, `null`, or `''`). */
+export function isEmptyRow(record: RawRecord): boolean {
+  return Object.values(record).every((v) => v === undefined || v === null || v === '');
 }

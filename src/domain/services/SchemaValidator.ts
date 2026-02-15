@@ -1,5 +1,6 @@
 import type { SchemaDefinition } from '../model/Schema.js';
 import type { RawRecord } from '../model/Record.js';
+import { isEmptyRow as isEmptyRowCheck } from '../model/Record.js';
 import type { ValidationResult, ValidationError } from '../model/ValidationResult.js';
 import type { FieldDefinition } from '../model/FieldDefinition.js';
 import { validResult, invalidResult } from '../model/ValidationResult.js';
@@ -128,7 +129,7 @@ export class SchemaValidator {
 
   /** Check whether every value in the record is empty (`undefined`, `null`, or `''`). */
   isEmptyRow(record: RawRecord): boolean {
-    return Object.values(record).every((v) => v === undefined || v === null || v === '');
+    return isEmptyRowCheck(record);
   }
 
   /** Whether the schema is configured to skip rows where all values are empty. */

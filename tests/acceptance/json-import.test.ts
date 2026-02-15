@@ -81,8 +81,9 @@ describe('JSON import acceptance', () => {
     });
 
     expect(processed).toHaveLength(2);
-    expect(importer.getFailedRecords()).toHaveLength(1);
-    expect(importer.getFailedRecords()[0]?.raw.email).toBe('not-an-email');
+    const failedRecords = await importer.getFailedRecords();
+    expect(failedRecords).toHaveLength(1);
+    expect(failedRecords[0]?.raw.email).toBe('not-an-email');
   });
 
   it('should batch JSON records correctly', async () => {

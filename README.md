@@ -437,7 +437,7 @@ The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and 
 | `resume()` | Resume a paused import. |
 | `abort()` | Cancel the import permanently. |
 | `getStatus()` | Get current state, progress, and batch details. |
-| `getFailedRecords()` | Get all records that failed validation or processing. |
+| `getFailedRecords()` | Get all records that failed validation or processing. Returns `Promise`. |
 | `getPendingRecords()` | Get records not yet processed. |
 | `getJobId()` | Get the unique job identifier. |
 

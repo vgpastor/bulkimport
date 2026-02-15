@@ -107,7 +107,7 @@ describe('maxConcurrentBatches', () => {
     });
 
     expect(processed).toHaveLength(4); // 6 total - 2 invalid
-    expect(importer.getFailedRecords()).toHaveLength(2);
+    expect(await importer.getFailedRecords()).toHaveLength(2);
     expect(importer.getStatus().state).toBe('COMPLETED');
   });
 

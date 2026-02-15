@@ -189,7 +189,7 @@ describe('Edge case: skipEmptyRows', () => {
     const processed = await processAll(importer, csv);
 
     expect(processed).toHaveLength(2);
-    expect(importer.getFailedRecords()).toHaveLength(0);
+    expect(await importer.getFailedRecords()).toHaveLength(0);
   });
 
   it('should fail validation on empty rows when skipEmptyRows is false and rows reach validator', async () => {
@@ -205,7 +205,7 @@ describe('Edge case: skipEmptyRows', () => {
 
     // CsvParser filters empty rows before they reach the validator
     expect(processed).toHaveLength(2);
-    expect(importer.getFailedRecords()).toHaveLength(0);
+    expect(await importer.getFailedRecords()).toHaveLength(0);
   });
 
   it('should skip empty rows in preview', async () => {
@@ -356,7 +356,7 @@ describe('Edge case: all records fail validation', () => {
     const processed = await processAll(importer, csv);
 
     expect(processed).toHaveLength(0);
-    expect(importer.getFailedRecords()).toHaveLength(2);
+    expect(await importer.getFailedRecords()).toHaveLength(2);
 
     const status = importer.getStatus();
     expect(status.state).toBe('COMPLETED');

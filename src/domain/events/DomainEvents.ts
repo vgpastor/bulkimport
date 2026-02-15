@@ -102,6 +102,21 @@ export interface RecordFailedEvent {
   readonly timestamp: number;
 }
 
+/** Emitted when a failed record is about to be retried. */
+export interface RecordRetriedEvent {
+  readonly type: 'record:retried';
+  readonly jobId: string;
+  readonly batchId: string;
+  readonly recordIndex: number;
+  /** Current attempt number (1-based). */
+  readonly attempt: number;
+  /** Maximum retries configured. */
+  readonly maxRetries: number;
+  /** Error from the previous attempt. */
+  readonly error: string;
+  readonly timestamp: number;
+}
+
 /** Discriminated union of all domain events. */
 export type DomainEvent =
   | ImportStartedEvent
@@ -114,7 +129,8 @@ export type DomainEvent =
   | BatchCompletedEvent
   | BatchFailedEvent
   | RecordProcessedEvent
-  | RecordFailedEvent;
+  | RecordFailedEvent
+  | RecordRetriedEvent;
 
 /** String literal union of all event type names. */
 export type EventType = DomainEvent['type'];

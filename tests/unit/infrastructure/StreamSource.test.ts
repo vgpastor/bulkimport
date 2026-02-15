@@ -96,6 +96,65 @@ describe('StreamSource', () => {
     });
   });
 
+  describe('ReadableStream input', () => {
+    it('should yield string chunks from a ReadableStream', async () => {
+      const readable = new ReadableStream<string>({
+        start(controller) {
+          controller.enqueue('chunk1');
+          controller.enqueue('chunk2');
+          controller.close();
+        },
+      });
+
+      const source = new StreamSource(readable);
+      const chunks: string[] = [];
+      for await (const chunk of source.read()) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks).toEqual(['chunk1', 'chunk2']);
+    });
+
+    it('should convert Buffer chunks from a ReadableStream', async () => {
+      const readable = new ReadableStream<Buffer>({
+        start(controller) {
+          controller.enqueue(Buffer.from('hello '));
+          controller.enqueue(Buffer.from('world'));
+          controller.close();
+        },
+      });
+
+      const source = new StreamSource(readable);
+      const chunks: string[] = [];
+      for await (const chunk of source.read()) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks.join('')).toBe('hello world');
+    });
+
+    it('should throw when ReadableStream is read twice', async () => {
+      const readable = new ReadableStream<string>({
+        start(controller) {
+          controller.enqueue('data');
+          controller.close();
+        },
+      });
+
+      const source = new StreamSource(readable);
+
+      for await (const _ of source.read()) {
+        // consume
+      }
+
+      await expect(async () => {
+        for await (const _ of source.read()) {
+          // should throw
+        }
+      }).rejects.toThrow('already been consumed');
+    });
+  });
+
   describe('integration with BulkImport pipeline', () => {
     it('should work as DataSource in full import', async () => {
       const { BulkImport } = await import('../../../src/BulkImport.js');

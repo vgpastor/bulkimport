@@ -13,10 +13,14 @@ export type {
   PreviewResult,
 } from './domain/model/ImportJob.js';
 export type { ProcessedRecord, RawRecord, RecordStatus } from './domain/model/Record.js';
+export { isEmptyRow } from './domain/model/Record.js';
 export type { Batch } from './domain/model/Batch.js';
 export type { ValidationResult, ValidationError, ValidationErrorCode } from './domain/model/ValidationResult.js';
 export { ImportStatus } from './domain/model/ImportStatus.js';
 export { BatchStatus } from './domain/model/BatchStatus.js';
+
+// Domain services
+export { BatchSplitter } from './domain/services/BatchSplitter.js';
 
 // Ports (for custom implementations)
 export type { SourceParser, ParserOptions } from './domain/ports/SourceParser.js';
@@ -40,6 +44,7 @@ export type {
   BatchFailedEvent,
   RecordProcessedEvent,
   RecordFailedEvent,
+  RecordRetriedEvent,
 } from './domain/events/DomainEvents.js';
 
 // Infrastructure adapters (built-in)

@@ -29,14 +29,6 @@ export function createBatch(id: string, index: number, records: readonly Process
   };
 }
 
-/** Update specific fields of a batch (immutable). */
-export function updateBatch(
-  batch: Batch,
-  updates: Partial<Pick<Batch, 'status' | 'records' | 'processedCount' | 'failedCount'>>,
-): Batch {
-  return { ...batch, ...updates };
-}
-
 /** Clear record data from a batch to release memory. */
 export function clearBatchRecords(batch: Batch): Batch {
   return { ...batch, records: [] };

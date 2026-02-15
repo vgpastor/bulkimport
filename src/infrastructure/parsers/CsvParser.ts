@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import type { SourceParser, ParserOptions } from '../../domain/ports/SourceParser.js';
 import type { RawRecord } from '../../domain/model/Record.js';
+import { isEmptyRow } from '../../domain/model/Record.js';
 
 /** CSV parser adapter using PapaParse. Supports auto-delimiter detection and header mapping. */
 export class CsvParser implements SourceParser {
@@ -25,7 +26,7 @@ export class CsvParser implements SourceParser {
     });
 
     for (const row of result.data as Record<string, unknown>[]) {
-      if (this.isEmptyRow(row)) continue;
+      if (isEmptyRow(row as RawRecord)) continue;
       yield row as RawRecord;
     }
   }
@@ -52,9 +53,5 @@ export class CsvParser implements SourceParser {
       encoding: 'utf-8',
       hasHeader: true,
     };
-  }
-
-  private isEmptyRow(row: Record<string, unknown>): boolean {
-    return Object.values(row).every((v) => v === null || v === undefined || v === '');
   }
 }

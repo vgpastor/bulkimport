@@ -2,7 +2,7 @@
 
 Backlog de tareas pendientes. Las fases completadas se han eliminado para mantener el fichero limpio.
 
-Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control de flujo), 5 (Error handling), 6 (Persistencia de estado), 7 (Preview), 8 (Fuentes de datos), 9 (Eventos), 10 (Schema avanzado), 12 (Hardening), 13 (Publicación).
+Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control de flujo), 5 (Error handling), 6 (Persistencia de estado), 7 (Preview), 8 (Fuentes de datos), 9 (Eventos), 10 (Schema avanzado), 12 (Hardening), 13 (Publicación), 14 (Performance & Memory), 15 (Code Quality & Deduplication).
 
 ---
 
@@ -16,6 +16,7 @@ Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control d
 
 ## Deuda técnica
 
-- [ ] Extraer use cases de `BulkImport` facade a `application/usecases/` (CreateImportJob, StartImport, PauseImport, etc.)
-- [ ] Extraer lógica de batching como domain service reutilizable
-- [ ] Retry mechanism para registros fallidos
+- [x] Extraer use cases de `BulkImport` facade a `application/usecases/` (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus)
+- [x] Extraer lógica de batching como domain service reutilizable (`BatchSplitter`)
+- [x] Mejorar coverage: InMemoryStateStore 63% → 100%, BulkImport branches 74% → 90%
+- [x] Retry mechanism para registros fallidos (`maxRetries`, `retryDelayMs`, backoff exponencial, `record:retried` event)

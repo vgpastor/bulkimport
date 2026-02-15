@@ -14,28 +14,20 @@ src/
 │   ├── model/        # Entities, value objects, state machines (all immutable)
 │   ├── ports/        # Interfaces: DataSource, SourceParser, StateStore, RecordProcessorFn
 │   ├── events/       # Domain events (discriminated unions)
-│   └── services/     # Domain services (SchemaValidator)
-├── application/      # Application layer (EventBus)
+│   └── services/     # Domain services (SchemaValidator, BatchSplitter)
+├── application/      # Application layer (EventBus, ImportJobContext, use cases)
+│   ├── EventBus.ts
+│   ├── ImportJobContext.ts  # Mutable state holder shared across use cases
+│   └── usecases/     # One class per operation
+│       ├── StartImport.ts
+│       ├── PreviewImport.ts
+│       ├── PauseImport.ts
+│       ├── ResumeImport.ts
+│       ├── AbortImport.ts
+│       └── GetImportStatus.ts
 ├── infrastructure/   # Concrete adapters (CsvParser, BufferSource, InMemoryStateStore)
-└── BulkImport.ts     # Facade — orchestrates the import lifecycle
+└── BulkImport.ts     # Facade — thin delegation layer, composition root
 ```
-
-### Target architecture (spec)
-
-The spec envisions a richer `application/` layer with explicit use cases:
-
-```
-src/application/usecases/
-├── CreateImportJob.ts
-├── PreviewImport.ts
-├── StartImport.ts
-├── PauseImport.ts
-├── ResumeImport.ts
-├── AbortImport.ts
-└── GetImportStatus.ts
-```
-
-And a `BatchSplitter` domain service alongside `SchemaValidator`. Currently the facade (`BulkImport.ts`) absorbs all orchestration. Extracting use cases is a future refactor — see `todo.md`.
 
 ### Layer rules
 
@@ -165,6 +157,7 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 - **Zero dependencies in domain**: The domain layer has NO external dependencies. Adapters (infrastructure) may use PapaParse, fast-xml-parser, etc.
 - **ID generation**: Use `crypto.randomUUID()` (native Node 20+ and modern browsers).
 - **Error boundaries**: Each batch runs inside try/catch. A failing batch does not stop others when `continueOnError: true`. Consumer processor errors are captured in the record, never propagated to the engine.
+- **Retry with exponential backoff**: `maxRetries` and `retryDelayMs` config options. Only processor failures are retried (validation failures are structural, never retried). Backoff formula: `retryDelayMs * 2^(attempt - 1)`. Each retry emits a `record:retried` event. `retryCount` is tracked on `ProcessedRecord`.
 
 ## Scope Boundaries — What This Library Does NOT Do
 
@@ -177,14 +170,17 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 
 ## Current State & Known Gaps
 
-Published as `@bulkimport/core@0.2.2`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
+Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
 
 ### Implemented
 
 - Streaming batch processing — `start()` parses lazily and processes batch-by-batch, never loading all records in memory.
-- `maxConcurrentBatches` — real batch concurrency via `Promise.race` pool. Default: 1 (sequential). Set > 1 for parallel batch processing.
+- `maxConcurrentBatches` — real batch concurrency via `Promise.race` pool with `Set<Promise>` for O(1) add/delete. Default: 1 (sequential). Set > 1 for parallel batch processing.
 - O(1) progress tracking with counters. Percentage includes both processed and failed records.
+- O(1) batch lookup — `batchIndexById` Map for instant batch-by-id access in `processStreamBatch`.
+- O(1) record upsert in state stores — `InMemoryStateStore` uses `Map<number, ProcessedRecord>` internally; `FileStateStore` uses an in-memory Map cache flushed to disk.
 - Memory release — `clearBatchRecords()` frees record data after each batch completes.
+- Memory-safe failed records — `getFailedRecords()` delegates to StateStore instead of accumulating in memory. No unbounded in-memory growth for imports with high failure rates.
 - Full StateStore integration — `BulkImport` now calls `saveProcessedRecord()` for every record and `updateBatchState()` for batch transitions. State is persisted after each batch for crash recovery.
 - `BulkImport.restore(jobId, config)` — static method to resume interrupted imports. Rebuilds counters from persisted state and skips already-completed batches.
 - Full validation pipeline (string, number, boolean, date, email, array, custom validators).
@@ -193,13 +189,17 @@ Published as `@bulkimport/core@0.2.2`. CI/CD configured with GitHub Actions (lin
 - Unique field duplicate detection — cross-batch tracking via `seenUniqueValues` Map, case-insensitive for strings.
 - Pause/resume/abort with AbortController.
 - Preview with sampling.
-- Domain events with typed EventBus.
-- `skipEmptyRows` in `SchemaValidator` — filters empty rows before validation in both `start()` and `preview()`.
+- Domain events with typed EventBus — handler errors are isolated (try/catch in `emit()`), one broken subscriber cannot disrupt the pipeline.
+- `skipEmptyRows` — shared `isEmptyRow()` function in `Record.ts`, used by SchemaValidator, CsvParser, and BulkImport.
+- Shared `detectMimeType()` utility — used by UrlSource and FilePathSource.
 - ESLint 9 flat config + Prettier configured and enforced.
 - JSDoc on all public API types, interfaces, methods, and ports.
 - `BulkImport.generateTemplate(schema)` — generate CSV header from schema.
 - CHANGELOG maintained with Keep a Changelog format.
-- 186 acceptance + unit tests passing (including concurrency, state persistence, restore, XML import, edge cases).
+- `BatchSplitter` domain service — reusable async generator that groups a record stream into fixed-size batches. Used internally by `StartImport` use case.
+- `application/usecases/` layer — orchestration extracted from `BulkImport` facade into dedicated use case classes (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus). Shared state lives in `ImportJobContext`.
+- Retry mechanism — `maxRetries` (default: 0) and `retryDelayMs` (default: 1000) config options. Exponential backoff for processor failures. `record:retried` event emitted per attempt. `retryCount` tracked on `ProcessedRecord`.
+- 276 acceptance + unit tests passing (including concurrency, state persistence, restore, retry, XML import, edge cases).
 - npm workspaces configured for monorepo subpackages (`packages/*`).
 - Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
 - Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`.
@@ -211,7 +211,4 @@ Published as `@bulkimport/core@0.2.2`. CI/CD configured with GitHub Actions (lin
 
 ### Known Gaps
 
-- `application/usecases/` layer not extracted — all orchestration lives in `BulkImport` facade.
-- No retry mechanism for failed records.
-
-See `todo.md` for the full prioritized backlog.
+No major gaps remaining. See `todo.md` for the full backlog.

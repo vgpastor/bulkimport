@@ -101,8 +101,9 @@ describe('Schema advanced: array fields', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getFailedRecords()).toHaveLength(1);
-    expect(importer.getFailedRecords()[0]?.errors[0]?.code).toBe('REQUIRED');
+    const failedRecords = await importer.getFailedRecords();
+    expect(failedRecords).toHaveLength(1);
+    expect(failedRecords[0]?.errors[0]?.code).toBe('REQUIRED');
   });
 });
 
@@ -221,8 +222,9 @@ describe('Schema advanced: unique fields', () => {
     });
 
     expect(processed).toHaveLength(2);
-    expect(importer.getFailedRecords()).toHaveLength(1);
-    expect(importer.getFailedRecords()[0]?.errors[0]?.code).toBe('DUPLICATE_VALUE');
+    const failedDups = await importer.getFailedRecords();
+    expect(failedDups).toHaveLength(1);
+    expect(failedDups[0]?.errors[0]?.code).toBe('DUPLICATE_VALUE');
   });
 
   it('should detect duplicates case-insensitively', async () => {
@@ -253,7 +255,7 @@ describe('Schema advanced: unique fields', () => {
     });
 
     expect(processed).toHaveLength(1);
-    expect(importer.getFailedRecords()).toHaveLength(1);
+    expect(await importer.getFailedRecords()).toHaveLength(1);
   });
 
   it('should track uniqueness across batches', async () => {
@@ -287,7 +289,7 @@ describe('Schema advanced: unique fields', () => {
 
     // Record 3 (Carol/ID001) should be rejected even though it's in batch 2
     expect(processed).toHaveLength(2);
-    expect(importer.getFailedRecords()).toHaveLength(1);
+    expect(await importer.getFailedRecords()).toHaveLength(1);
   });
 
   it('should support multiple unique fields', async () => {
@@ -319,7 +321,7 @@ describe('Schema advanced: unique fields', () => {
     });
 
     expect(processed).toHaveLength(1);
-    expect(importer.getFailedRecords()).toHaveLength(2);
+    expect(await importer.getFailedRecords()).toHaveLength(2);
   });
 
   it('should skip uniqueness check for empty values', async () => {
@@ -387,8 +389,9 @@ describe('Schema advanced: combined features', () => {
     expect(processed[0]?.email).toBe('alice@test.com');
     expect(processed[0]?.documentNumber).toBe('ID001');
 
-    expect(importer.getFailedRecords()).toHaveLength(1);
-    expect(importer.getFailedRecords()[0]?.errors[0]?.code).toBe('DUPLICATE_VALUE');
+    const failedCombined = await importer.getFailedRecords();
+    expect(failedCombined).toHaveLength(1);
+    expect(failedCombined[0]?.errors[0]?.code).toBe('DUPLICATE_VALUE');
   });
 });
 

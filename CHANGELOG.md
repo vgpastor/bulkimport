@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.4.0] - 2026-02-15
+
+### Added
+
+- **Retry mechanism** — `maxRetries` (default: `0`) and `retryDelayMs` (default: `1000`) config options. Only processor failures are retried — validation failures are structural and never retried. Uses exponential backoff: `retryDelayMs * 2^(attempt - 1)`. Each retry emits a `record:retried` event. `retryCount` is tracked on `ProcessedRecord` for both successful and failed records.
+- **`RecordRetriedEvent`** domain event — emitted before each retry attempt with `attempt` number, `maxRetries`, and the error from the previous attempt.
+- **`retryCount`** field on `ProcessedRecord` — tracks how many retry attempts were made (0 when no retries occurred).
+- **`BatchSplitter`** domain service — reusable async generator that groups a record stream into fixed-size batches. Extracted from `StartImport` for testability and reuse.
+- **Use cases layer** (`application/usecases/`) — orchestration extracted from `BulkImport` facade into dedicated use case classes: `StartImport`, `PreviewImport`, `PauseImport`, `ResumeImport`, `AbortImport`, `GetImportStatus`. Shared state lives in `ImportJobContext`.
+- `isEmptyRow()` function exported from public API (`Record.ts`).
+- 276 total tests (was 203): 11 retry tests, 48 use case/coverage tests, 14 infrastructure tests.
+
+### Changed
+
+- **BREAKING**: `getFailedRecords()` is now async (returns `Promise<readonly ProcessedRecord[]>`). Failed records are no longer accumulated in memory — they are delegated to the configured `StateStore`, eliminating unbounded memory growth for imports with high failure rates.
+- **Performance**: Concurrent batch pool (`activeBatches`) replaced from `Array` to `Set<Promise>` for O(1) add/delete instead of O(n) `indexOf` + `splice`.
+- **Performance**: Batch lookup in `processStreamBatch` and `updateBatchStatus` uses `batchIndexById` Map for O(1) access instead of `findIndex`/`.map()`.
+- **Performance**: `InMemoryStateStore.saveProcessedRecord()` uses `Map<number, ProcessedRecord>` internally for O(1) upsert instead of O(n) `findIndex`.
+- **Performance**: `FileStateStore.saveProcessedRecord()` uses an in-memory Map cache per job for O(1) upsert, flushed to disk after each write. Eliminates repeated full-array scans.
+- **Refactor**: `isEmptyRow()` consolidated into a single function in `Record.ts`. CsvParser and SchemaValidator now share the same implementation.
+- **Refactor**: MIME type detection extracted to shared `detectMimeType()` utility. Used by `UrlSource` and `FilePathSource`.
+- **Resilience**: `EventBus.emit()` now wraps handler calls in try/catch — a throwing handler no longer prevents other handlers from executing or disrupts the import pipeline.
+
+### Removed
+
+- `updateBatch()` function from `Batch.ts` — was exported but never used anywhere in the codebase.
+
 ## [0.3.0] - 2026-02-15
 
 ### Added

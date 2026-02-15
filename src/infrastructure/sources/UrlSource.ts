@@ -1,4 +1,5 @@
 import type { DataSource, SourceMetadata } from '../../domain/ports/DataSource.js';
+import { detectMimeType } from '../detectMimeType.js';
 
 export interface UrlSourceOptions {
   /** Custom HTTP headers to send with the request. */
@@ -115,19 +116,6 @@ export class UrlSource implements DataSource {
   }
 
   private detectMimeType(): string {
-    const fileName = this.extractFileName();
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'csv':
-        return 'text/csv';
-      case 'json':
-        return 'application/json';
-      case 'xml':
-        return 'application/xml';
-      case 'tsv':
-        return 'text/tab-separated-values';
-      default:
-        return 'text/plain';
-    }
+    return detectMimeType(this.extractFileName());
   }
 }

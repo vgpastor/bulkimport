@@ -120,7 +120,7 @@ describe('Test 2: Records with validation errors', () => {
     expect(processed).toHaveLength(9);
     expect(failedEvents).toHaveLength(3);
 
-    const failed = importer.getFailedRecords();
+    const failed = await importer.getFailedRecords();
     expect(failed).toHaveLength(3);
     expect(failed.every((r) => r.errors.length > 0)).toBe(true);
 
@@ -232,7 +232,7 @@ describe('Test 5: Error in consumer processor', () => {
     expect(status.progress.processedRecords).toBe(9);
     expect(status.progress.failedRecords).toBe(1);
 
-    const failed = importer.getFailedRecords();
+    const failed = await importer.getFailedRecords();
     expect(failed).toHaveLength(1);
     expect(failed[0]?.processingError).toBe('DB connection lost');
   });
@@ -334,7 +334,7 @@ describe('Test 9: Custom field validator', () => {
     });
 
     expect(processed).toHaveLength(2); // Alice and Charlie
-    const failed = importer.getFailedRecords();
+    const failed = await importer.getFailedRecords();
     expect(failed).toHaveLength(1);
     expect(failed[0]?.errors[0]?.code).toBe('CUSTOM_VALIDATION');
     expect(failed[0]?.errors[0]?.message).toBe('Invalid NIF format');
