@@ -73,7 +73,9 @@ describe('BulkImport — uncovered branches', () => {
   describe('resume from wrong state', () => {
     it('should throw when resuming from CREATED', () => {
       const importer = createImporter();
-      expect(() => { importer.resume(); }).toThrow("Cannot resume import from status 'CREATED'");
+      expect(() => {
+        importer.resume();
+      }).toThrow("Cannot resume import from status 'CREATED'");
     });
 
     it('should throw when resuming an aborted import', async () => {
@@ -93,7 +95,9 @@ describe('BulkImport — uncovered branches', () => {
       await startPromise;
 
       expect(importer.getStatus().state).toBe('ABORTED');
-      expect(() => { importer.resume(); }).toThrow('Cannot resume an aborted import');
+      expect(() => {
+        importer.resume();
+      }).toThrow('Cannot resume an aborted import');
     });
   });
 

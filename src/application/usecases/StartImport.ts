@@ -2,7 +2,12 @@ import type { ProcessedRecord } from '../../domain/model/Record.js';
 import type { DataSource } from '../../domain/ports/DataSource.js';
 import type { SourceParser } from '../../domain/ports/SourceParser.js';
 import type { RecordProcessorFn, ProcessingContext } from '../../domain/ports/RecordProcessor.js';
-import { createPendingRecord, markRecordValid, markRecordInvalid, markRecordFailed } from '../../domain/model/Record.js';
+import {
+  createPendingRecord,
+  markRecordValid,
+  markRecordInvalid,
+  markRecordFailed,
+} from '../../domain/model/Record.js';
 import { createBatch, clearBatchRecords } from '../../domain/model/Batch.js';
 import { BatchSplitter } from '../../domain/services/BatchSplitter.js';
 import type { ImportJobContext } from '../ImportJobContext.js';
