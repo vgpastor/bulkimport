@@ -29,6 +29,18 @@ export interface BulkImportConfig {
   readonly continueOnError?: boolean;
   /** Persistence adapter for job state. Default: `InMemoryStateStore`. */
   readonly stateStore?: StateStore;
+  /**
+   * Maximum number of retry attempts for records that fail during processing.
+   * Only processor errors are retried — validation failures are never retried.
+   * Default: `0` (no retries).
+   */
+  readonly maxRetries?: number;
+  /**
+   * Base delay in milliseconds between retry attempts.
+   * Uses exponential backoff: `retryDelayMs * 2^(attempt - 1)`.
+   * Default: `1000`.
+   */
+  readonly retryDelayMs?: number;
 }
 
 /**
@@ -54,6 +66,8 @@ export class BulkImport {
       config.continueOnError ?? false,
       config.maxConcurrentBatches ?? 1,
       config.stateStore ?? new InMemoryStateStore(),
+      config.maxRetries ?? 0,
+      config.retryDelayMs ?? 1000,
     );
   }
 

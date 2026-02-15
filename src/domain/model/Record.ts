@@ -22,6 +22,8 @@ export interface ProcessedRecord {
   readonly errors: readonly ValidationError[];
   /** Error message from the processor callback (populated when `status` is `'failed'`). */
   readonly processingError?: string;
+  /** Number of retry attempts made before final success or failure. Default: `0`. */
+  readonly retryCount?: number;
 }
 
 /** Create a new record in `pending` status. */

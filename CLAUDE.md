@@ -157,6 +157,7 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 - **Zero dependencies in domain**: The domain layer has NO external dependencies. Adapters (infrastructure) may use PapaParse, fast-xml-parser, etc.
 - **ID generation**: Use `crypto.randomUUID()` (native Node 20+ and modern browsers).
 - **Error boundaries**: Each batch runs inside try/catch. A failing batch does not stop others when `continueOnError: true`. Consumer processor errors are captured in the record, never propagated to the engine.
+- **Retry with exponential backoff**: `maxRetries` and `retryDelayMs` config options. Only processor failures are retried (validation failures are structural, never retried). Backoff formula: `retryDelayMs * 2^(attempt - 1)`. Each retry emits a `record:retried` event. `retryCount` is tracked on `ProcessedRecord`.
 
 ## Scope Boundaries — What This Library Does NOT Do
 
@@ -197,7 +198,8 @@ Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lin
 - CHANGELOG maintained with Keep a Changelog format.
 - `BatchSplitter` domain service — reusable async generator that groups a record stream into fixed-size batches. Used internally by `StartImport` use case.
 - `application/usecases/` layer — orchestration extracted from `BulkImport` facade into dedicated use case classes (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus). Shared state lives in `ImportJobContext`.
-- 265 acceptance + unit tests passing (including concurrency, state persistence, restore, XML import, edge cases).
+- Retry mechanism — `maxRetries` (default: 0) and `retryDelayMs` (default: 1000) config options. Exponential backoff for processor failures. `record:retried` event emitted per attempt. `retryCount` tracked on `ProcessedRecord`.
+- 276 acceptance + unit tests passing (including concurrency, state persistence, restore, retry, XML import, edge cases).
 - npm workspaces configured for monorepo subpackages (`packages/*`).
 - Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
 - Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`.
@@ -209,6 +211,4 @@ Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lin
 
 ### Known Gaps
 
-- No retry mechanism for failed records.
-
-See `todo.md` for the full prioritized backlog.
+No major gaps remaining. See `todo.md` for the full backlog.

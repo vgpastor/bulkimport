@@ -24,6 +24,8 @@ export class ImportJobContext {
   readonly batchSize: number;
   readonly continueOnError: boolean;
   readonly maxConcurrentBatches: number;
+  readonly maxRetries: number;
+  readonly retryDelayMs: number;
   readonly schema: SchemaDefinition;
 
   source: DataSource | null = null;
@@ -49,11 +51,15 @@ export class ImportJobContext {
     continueOnError: boolean,
     maxConcurrentBatches: number,
     stateStore: StateStore,
+    maxRetries: number,
+    retryDelayMs: number,
   ) {
     this.schema = schema;
     this.batchSize = batchSize;
     this.continueOnError = continueOnError;
     this.maxConcurrentBatches = maxConcurrentBatches;
+    this.maxRetries = maxRetries;
+    this.retryDelayMs = retryDelayMs;
     this.stateStore = stateStore;
     this.validator = new SchemaValidator(schema);
     this.eventBus = new EventBus();

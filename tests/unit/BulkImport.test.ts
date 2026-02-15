@@ -334,4 +334,58 @@ describe('BulkImport — uncovered branches', () => {
       expect(importer.getStatus().state).toBe('ABORTED');
     });
   });
+
+  // --- Retry ---
+
+  describe('retry with non-Error throw', () => {
+    it('should handle non-Error throw during retries', async () => {
+      const csv = 'email,name\na@test.com,Alice';
+      const importer = new BulkImport({
+        schema,
+        batchSize: 10,
+        maxRetries: 1,
+        retryDelayMs: 0,
+        continueOnError: true,
+      });
+      importer.from(new BufferSource(csv), new CsvParser());
+
+      await importer.start(async () => {
+        await Promise.resolve();
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw 42;
+      });
+
+      const failed = await importer.getFailedRecords();
+      expect(failed).toHaveLength(1);
+      expect(failed[0]?.processingError).toBe('42');
+      expect(failed[0]?.retryCount).toBe(1);
+    });
+  });
+
+  describe('retry with exponential backoff timing', () => {
+    it('should apply exponential backoff delays', async () => {
+      const csv = 'email,name\na@test.com,Alice';
+      const importer = new BulkImport({
+        schema,
+        batchSize: 10,
+        maxRetries: 2,
+        retryDelayMs: 50,
+        continueOnError: true,
+      });
+      importer.from(new BufferSource(csv), new CsvParser());
+
+      const start = Date.now();
+      await importer.start(async () => {
+        await Promise.resolve();
+        throw new Error('Always fails');
+      });
+      const elapsed = Date.now() - start;
+
+      // Delay: 50ms (attempt 1) + 100ms (attempt 2) = 150ms minimum
+      expect(elapsed).toBeGreaterThanOrEqual(130);
+
+      const failed = await importer.getFailedRecords();
+      expect(failed).toHaveLength(1);
+    });
+  });
 });

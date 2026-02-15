@@ -210,25 +210,25 @@ export class StartImport {
       }
 
       const validRecord = markRecordValid(record, transformed);
+      const context: ProcessingContext = {
+        jobId: this.ctx.jobId,
+        batchId,
+        batchIndex,
+        recordIndex: record.index,
+        totalRecords: this.ctx.totalRecords,
+        signal: this.ctx.abortController?.signal ?? new AbortController().signal,
+      };
 
-      try {
-        const context: ProcessingContext = {
-          jobId: this.ctx.jobId,
-          batchId,
-          batchIndex,
-          recordIndex: record.index,
-          totalRecords: this.ctx.totalRecords,
-          signal: this.ctx.abortController?.signal ?? new AbortController().signal,
-        };
+      const result = await this.executeWithRetry(validRecord, context, processor, batchId);
 
-        await processor(validRecord.parsed, context);
-
+      if (result.success) {
         this.ctx.processedCount++;
         processedCount++;
 
         await this.ctx.stateStore.saveProcessedRecord(this.ctx.jobId, batchId, {
           ...validRecord,
           status: 'processed',
+          retryCount: result.attempts - 1,
         });
 
         this.ctx.eventBus.emit({
@@ -238,25 +238,26 @@ export class StartImport {
           recordIndex: record.index,
           timestamp: Date.now(),
         });
-      } catch (error) {
-        const failedRecord = markRecordFailed(validRecord, error instanceof Error ? error.message : String(error));
+      } else {
+        const failedRecord = markRecordFailed(validRecord, result.error);
+        const failedWithRetries: ProcessedRecord = { ...failedRecord, retryCount: result.attempts - 1 };
         this.ctx.failedCount++;
         failedCount++;
 
-        await this.ctx.stateStore.saveProcessedRecord(this.ctx.jobId, batchId, failedRecord);
+        await this.ctx.stateStore.saveProcessedRecord(this.ctx.jobId, batchId, failedWithRetries);
 
         this.ctx.eventBus.emit({
           type: 'record:failed',
           jobId: this.ctx.jobId,
           batchId,
           recordIndex: record.index,
-          error: error instanceof Error ? error.message : String(error),
-          record: failedRecord,
+          error: result.error,
+          record: failedWithRetries,
           timestamp: Date.now(),
         });
 
         if (!this.ctx.continueOnError) {
-          throw error;
+          throw new Error(result.error);
         }
       }
     }
@@ -298,5 +299,48 @@ export class StartImport {
     });
 
     await this.ctx.saveState();
+  }
+
+  private async executeWithRetry(
+    validRecord: ProcessedRecord,
+    context: ProcessingContext,
+    processor: RecordProcessorFn,
+    batchId: string,
+  ): Promise<{ success: true; attempts: number } | { success: false; attempts: number; error: string }> {
+    const maxAttempts = 1 + this.ctx.maxRetries;
+    let lastError = '';
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await processor(validRecord.parsed, context);
+        return { success: true, attempts: attempt };
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+
+        if (attempt < maxAttempts) {
+          this.ctx.eventBus.emit({
+            type: 'record:retried',
+            jobId: this.ctx.jobId,
+            batchId,
+            recordIndex: validRecord.index,
+            attempt,
+            maxRetries: this.ctx.maxRetries,
+            error: lastError,
+            timestamp: Date.now(),
+          });
+
+          const delay = this.ctx.retryDelayMs * Math.pow(2, attempt - 1);
+          await this.sleep(delay);
+        }
+      }
+    }
+
+    return { success: false, attempts: maxAttempts, error: lastError };
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }

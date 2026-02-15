@@ -44,6 +44,7 @@ export type {
   BatchFailedEvent,
   RecordProcessedEvent,
   RecordFailedEvent,
+  RecordRetriedEvent,
 } from './domain/events/DomainEvents.js';
 
 // Infrastructure adapters (built-in)
