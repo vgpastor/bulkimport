@@ -171,7 +171,7 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 
 ## Current State & Known Gaps
 
-Published as `@bulkimport/core@0.3.0`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
+Published as `@bulkimport/core@0.4.1`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
 
 ### Implemented
 

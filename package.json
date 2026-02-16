@@ -1,6 +1,6 @@
 {
   "name": "@bulkimport/core",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Backend-agnostic bulk data import library with schema validation, batch processing, and state management",
   "type": "module",
   "exports": {

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-16
+
 ### Added
 
 - **Deferred `import:started` event** — the event is now emitted after yielding to the microtask queue (`await Promise.resolve()`), so handlers registered after `start()` on the same tick receive it. Previously, the event fired synchronously inside `start()`, making it impossible to catch with late-registered handlers.
