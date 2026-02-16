@@ -1,6 +1,6 @@
 {
   "name": "@bulkimport/state-sequelize",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Sequelize-based StateStore adapter for @bulkimport/core",
   "type": "module",
   "exports": {
