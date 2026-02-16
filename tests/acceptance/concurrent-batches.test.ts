@@ -39,7 +39,7 @@ describe('maxConcurrentBatches', () => {
 
     expect(processed).toHaveLength(30);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.processedRecords).toBe(30);
     expect(status.batches).toHaveLength(3);
   });
@@ -69,7 +69,7 @@ describe('maxConcurrentBatches', () => {
 
     expect(processed).toHaveLength(50);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.processedRecords).toBe(50);
     expect(status.batches).toHaveLength(5);
   });
@@ -108,7 +108,7 @@ describe('maxConcurrentBatches', () => {
 
     expect(processed).toHaveLength(4); // 6 total - 2 invalid
     expect(await importer.getFailedRecords()).toHaveLength(2);
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
   });
 
   it('should emit batch events for all concurrent batches', async () => {
@@ -166,7 +166,7 @@ describe('maxConcurrentBatches', () => {
     });
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.processedRecords).toBe(19);
     expect(status.progress.failedRecords).toBe(1);
   });

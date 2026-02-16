@@ -6,6 +6,7 @@ import { defineRecordModel } from './models/RecordModel.js';
 import type { RecordModel, RecordRow } from './models/RecordModel.js';
 import * as JobMapper from './mappers/JobMapper.js';
 import * as RecordMapper from './mappers/RecordMapper.js';
+import { parseJson } from './utils/parseJson.js';
 
 export interface SequelizeStateStoreOptions {
   readonly tablePrefix?: string;
@@ -56,7 +57,12 @@ export class SequelizeStateStore implements StateStore {
     if (!row) return;
 
     const plain = row.get({ plain: true }) as JobRow;
-    const batches = plain.batches as Array<{ id: string; status: string; processedCount: number; failedCount: number }>;
+    const batches = parseJson(plain.batches) as Array<{
+      id: string;
+      status: string;
+      processedCount: number;
+      failedCount: number;
+    }>;
 
     const updated = batches.map((b) =>
       b.id === batchId
@@ -130,7 +136,7 @@ export class SequelizeStateStore implements StateStore {
     const pending = Math.max(0, totalRecords - processed - failed);
     const completed = processed + failed;
 
-    const batches = (plain?.batches ?? []) as Array<{ status: string }>;
+    const batches = plain ? (parseJson(plain.batches) as Array<{ status: string }>) : [];
     const completedBatches = batches.filter((b) => b.status === 'COMPLETED').length;
     const elapsed = plain?.startedAt ? Date.now() - Number(plain.startedAt) : 0;
 

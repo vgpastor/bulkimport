@@ -91,7 +91,7 @@ describe('Test 1: Full happy path', () => {
     expect(completedEvents[0]?.summary.failed).toBe(0);
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.percentage).toBe(100);
   });
 });
@@ -125,7 +125,7 @@ describe('Test 2: Records with validation errors', () => {
     expect(failed.every((r) => r.errors.length > 0)).toBe(true);
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
   });
 });
 
@@ -159,7 +159,7 @@ describe('Test 3: Pause and Resume', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     const statusWhilePaused = importer.getStatus();
-    expect(statusWhilePaused.state).toBe('PAUSED');
+    expect(statusWhilePaused.status).toBe('PAUSED');
     expect(processed.length).toBeGreaterThanOrEqual(20);
     const countBeforeResume = processed.length;
 
@@ -173,7 +173,7 @@ describe('Test 3: Pause and Resume', () => {
     expect(processed.length).toBeGreaterThan(countBeforeResume);
 
     const finalStatus = importer.getStatus();
-    expect(finalStatus.state).toBe('COMPLETED');
+    expect(finalStatus.status).toBe('COMPLETED');
   });
 });
 
@@ -200,7 +200,7 @@ describe('Test 4: Abort', () => {
     });
 
     const status = importer.getStatus();
-    expect(status.state).toBe('ABORTED');
+    expect(status.status).toBe('ABORTED');
 
     // Attempting to resume should throw
     expect(() => {
@@ -228,7 +228,7 @@ describe('Test 5: Error in consumer processor', () => {
     });
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.processedRecords).toBe(9);
     expect(status.progress.failedRecords).toBe(1);
 
@@ -454,7 +454,7 @@ describe('Test 11: Streaming processes batch-by-batch without loading all record
 
     // After completion, batch records should be cleared (memory released)
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.percentage).toBe(100);
     expect(status.progress.processedRecords).toBe(5);
 

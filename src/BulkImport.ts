@@ -7,7 +7,8 @@ import type { SourceParser } from './domain/ports/SourceParser.js';
 import type { DataSource } from './domain/ports/DataSource.js';
 import type { StateStore } from './domain/ports/StateStore.js';
 import type { RecordProcessorFn } from './domain/ports/RecordProcessor.js';
-import type { EventType, EventPayload } from './domain/events/DomainEvents.js';
+import type { EventType, EventPayload, DomainEvent } from './domain/events/DomainEvents.js';
+import type { FieldDefinition } from './domain/model/FieldDefinition.js';
 import { ImportJobContext } from './application/ImportJobContext.js';
 import { StartImport } from './application/usecases/StartImport.js';
 import { PreviewImport } from './application/usecases/PreviewImport.js';
@@ -16,6 +17,12 @@ import { ResumeImport } from './application/usecases/ResumeImport.js';
 import { AbortImport } from './application/usecases/AbortImport.js';
 import { GetImportStatus } from './application/usecases/GetImportStatus.js';
 import { InMemoryStateStore } from './infrastructure/state/InMemoryStateStore.js';
+
+/** Options for `BulkImport.generateTemplate()`. */
+export interface GenerateTemplateOptions {
+  /** Number of example rows to include with synthetic data. Default: `0` (header only). */
+  readonly exampleRows?: number;
+}
 
 /** Configuration for a bulk import job. */
 export interface BulkImportConfig {
@@ -115,13 +122,50 @@ export class BulkImport {
   }
 
   /**
-   * Generate a CSV header template from a schema definition.
+   * Generate a CSV template from a schema definition.
    *
-   * Returns a single CSV line with all field names, useful for letting
-   * frontends download a template that stays in sync with the schema.
+   * Returns a CSV string with the header row and optionally synthetic example
+   * rows. The example data is generated based on each field's type (e.g. a fake
+   * email for `type: 'email'`, an ISO date for `type: 'date'`, etc.).
+   *
+   * @param schema - The schema defining the fields.
+   * @param options - Optional settings (e.g. `exampleRows` count).
    */
-  static generateTemplate(schema: SchemaDefinition): string {
-    return schema.fields.map((f) => f.name).join(',');
+  static generateTemplate(schema: SchemaDefinition, options?: GenerateTemplateOptions): string {
+    const header = schema.fields.map((f) => f.name).join(',');
+    const rowCount = options?.exampleRows ?? 0;
+
+    if (rowCount <= 0) return header;
+
+    const rows: string[] = [header];
+    for (let i = 1; i <= rowCount; i++) {
+      rows.push(schema.fields.map((f) => BulkImport.generateExampleValue(f, i)).join(','));
+    }
+
+    return rows.join('\n');
+  }
+
+  private static generateExampleValue(field: FieldDefinition, rowIndex: number): string {
+    if (field.defaultValue !== undefined) {
+      return typeof field.defaultValue === 'string' ? field.defaultValue : JSON.stringify(field.defaultValue);
+    }
+
+    switch (field.type) {
+      case 'email':
+        return `user${String(rowIndex)}@example.com`;
+      case 'number':
+        return String(rowIndex * 100);
+      case 'boolean':
+        return rowIndex % 2 === 0 ? 'true' : 'false';
+      case 'date':
+        return `2024-01-${String(rowIndex).padStart(2, '0')}`;
+      case 'array':
+        return `value${String(rowIndex)}a${field.separator ?? ','}value${String(rowIndex)}b`;
+      case 'string':
+      case 'custom':
+      default:
+        return `${field.name}_${String(rowIndex)}`;
+    }
   }
 
   /** Set the data source and parser. Returns `this` for chaining. */
@@ -137,6 +181,18 @@ export class BulkImport {
     return this;
   }
 
+  /** Subscribe to all events regardless of type. Returns `this` for chaining. */
+  onAny(handler: (event: DomainEvent) => void): this {
+    this.ctx.eventBus.onAny(handler);
+    return this;
+  }
+
+  /** Unsubscribe a wildcard handler previously registered with `onAny()`. */
+  offAny(handler: (event: DomainEvent) => void): this {
+    this.ctx.eventBus.offAny(handler);
+    return this;
+  }
+
   /**
    * Validate a sample of records without processing them.
    *
@@ -145,6 +201,31 @@ export class BulkImport {
    */
   async preview(maxRecords = 10): Promise<PreviewResult> {
     return new PreviewImport(this.ctx).execute(maxRecords);
+  }
+
+  /**
+   * Count total records in the configured source without processing them.
+   *
+   * Streams through the entire source and counts records. Does not modify
+   * import state — can be called before `start()` to know the total for
+   * progress bars. Requires `from()` to be called first.
+   *
+   * @returns Total number of records in the source.
+   */
+  async count(): Promise<number> {
+    this.ctx.assertSourceConfigured();
+    const source = this.ctx.source as DataSource;
+    const parser = this.ctx.parser as SourceParser;
+    let total = 0;
+
+    for await (const chunk of source.read()) {
+      for await (const _record of parser.parse(chunk)) {
+        void _record;
+        total++;
+      }
+    }
+
+    return total;
   }
 
   /**
@@ -175,8 +256,18 @@ export class BulkImport {
     return new AbortImport(this.ctx).execute();
   }
 
-  /** Get current state, progress counters, and batch details. */
-  getStatus(): { state: ImportStatus; progress: ImportProgress; batches: readonly Batch[] } {
+  /**
+   * Get current status, progress counters, and batch details.
+   *
+   * Returns both `status` and `state` (deprecated alias) for backward compatibility.
+   */
+  getStatus(): {
+    status: ImportStatus;
+    /** @deprecated Use `status` instead. */
+    state: ImportStatus;
+    progress: ImportProgress;
+    batches: readonly Batch[];
+  } {
     return new GetImportStatus(this.ctx).execute();
   }
 

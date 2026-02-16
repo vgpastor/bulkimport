@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-16
+
+### Added
+
+- **Deferred `import:started` event** — the event is now emitted after yielding to the microtask queue (`await Promise.resolve()`), so handlers registered after `start()` on the same tick receive it. Previously, the event fired synchronously inside `start()`, making it impossible to catch with late-registered handlers.
+- **`generateTemplate()` with example rows** — `BulkImport.generateTemplate(schema, { exampleRows: 2 })` generates a CSV with synthetic data rows. Each field type produces appropriate example values: fake emails for `type: 'email'`, ISO dates for `type: 'date'`, numbers for `type: 'number'`, etc. Fields with `defaultValue` use that value instead.
+- **`onAny()` / `offAny()` wildcard event subscription** — `importer.onAny(handler)` receives all domain events regardless of type. Simplifies SSE/WebSocket relay where every event must be forwarded. Wildcard handlers are isolated (errors don't propagate).
+- **`ParsedRecord` type** — new type alias exported from the public API. Semantically distinct from `RawRecord`: values may have been split (arrays), transformed, or had defaults applied. `RecordProcessorFn` callback now receives `ParsedRecord` instead of `RawRecord`. Non-breaking: types are structurally identical.
+- **`count()` method** — `await importer.count()` streams through the source to count total records without modifying import state. Useful for progress bar initialization before calling `start()`.
+- **`status` field in `getStatus()` result** — `getStatus()` now returns both `status` and `state` (deprecated). The method name `getStatus()` now matches the field name `status`, resolving the naming inconsistency.
+- **`itemTransform` on `FieldDefinition`** — for `type: 'array'` fields, `itemTransform: (s) => s.toLowerCase()` applies a transform to each element after splitting. Useful for normalizing array items without a custom `transform` function.
+- **`GenerateTemplateOptions`** type exported from the public API.
+- **`ImportStatusResult`** type exported from the public API.
+- 24 new tests: deferred events (2), generateTemplate (6), onAny wildcard (3), ParsedRecord (1), count (3), getStatus status/state (2), itemTransform (3), EventBus unit tests (4). 300 total tests (was 276).
+
+### Deprecated
+
+- **`state` field in `getStatus()` return** — use `status` instead. The `state` field will be removed in the next major version.
+
 ## [0.4.0] - 2026-02-15
 
 ### Added

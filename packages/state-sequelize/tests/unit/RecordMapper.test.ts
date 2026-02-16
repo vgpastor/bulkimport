@@ -115,4 +115,53 @@ describe('RecordMapper', () => {
       expect(restored.status).toBe('pending');
     });
   });
+
+  describe('toDomain with JSON-as-string (MySQL driver)', () => {
+    it('should parse raw when returned as a JSON string', () => {
+      const record = createSampleRecord();
+      const row = RecordMapper.toRow('job-001', 'batch-001', record);
+      (row as Record<string, unknown>)['raw'] = JSON.stringify(row.raw);
+
+      const restored = RecordMapper.toDomain(row);
+      expect(restored.raw).toEqual({ email: 'test@example.com', name: 'Test User' });
+    });
+
+    it('should parse parsed when returned as a JSON string', () => {
+      const record = createSampleRecord();
+      const row = RecordMapper.toRow('job-001', 'batch-001', record);
+      (row as Record<string, unknown>)['parsed'] = JSON.stringify(row.parsed);
+
+      const restored = RecordMapper.toDomain(row);
+      expect(restored.parsed).toEqual({ email: 'test@example.com', name: 'Test User' });
+    });
+
+    it('should parse errors when returned as a JSON string', () => {
+      const record = createSampleRecord({
+        status: 'invalid',
+        errors: [{ field: 'email', message: 'Invalid', code: 'TYPE_MISMATCH', value: 'bad' }],
+      });
+      const row = RecordMapper.toRow('job-001', 'batch-001', record);
+      (row as Record<string, unknown>)['errors'] = JSON.stringify(row.errors);
+
+      const restored = RecordMapper.toDomain(row);
+      expect(restored.errors).toHaveLength(1);
+      expect(restored.errors[0]!.field).toBe('email');
+    });
+
+    it('should handle all JSON fields as strings simultaneously', () => {
+      const record = createSampleRecord({
+        status: 'invalid',
+        errors: [{ field: 'name', message: 'Required', code: 'REQUIRED' }],
+      });
+      const row = RecordMapper.toRow('job-001', 'batch-001', record);
+      (row as Record<string, unknown>)['raw'] = JSON.stringify(row.raw);
+      (row as Record<string, unknown>)['parsed'] = JSON.stringify(row.parsed);
+      (row as Record<string, unknown>)['errors'] = JSON.stringify(row.errors);
+
+      const restored = RecordMapper.toDomain(row);
+      expect(restored.raw).toEqual({ email: 'test@example.com', name: 'Test User' });
+      expect(restored.parsed).toEqual({ email: 'test@example.com', name: 'Test User' });
+      expect(restored.errors).toHaveLength(1);
+    });
+  });
 });

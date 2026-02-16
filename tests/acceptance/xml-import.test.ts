@@ -50,7 +50,7 @@ describe('XML Import', () => {
     expect(processed[0]).toEqual(expect.objectContaining({ email: 'alice@test.com', name: 'Alice', age: '30' }));
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.processedRecords).toBe(3);
     expect(status.batches).toHaveLength(2); // 2 + 1
   });
@@ -90,7 +90,7 @@ describe('XML Import', () => {
 
     expect(processed).toHaveLength(1);
     expect(await importer.getFailedRecords()).toHaveLength(1);
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
   });
 
   it('should preview XML records', async () => {

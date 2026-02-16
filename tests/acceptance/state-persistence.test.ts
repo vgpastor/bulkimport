@@ -205,7 +205,7 @@ describe('State persistence and restore', () => {
       expect(processedInRestore).toHaveLength(5);
 
       const status = restored!.getStatus();
-      expect(status.state).toBe('COMPLETED');
+      expect(status.status).toBe('COMPLETED');
       // Total processed = 10 (restored) + 5 (new) = 15
       expect(status.progress.processedRecords).toBe(15);
     });

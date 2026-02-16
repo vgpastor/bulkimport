@@ -39,6 +39,9 @@ export class StartImport {
       throw new Error('Source and parser must be configured. Call .from(source, parser) first.');
     }
 
+    // Yield to next microtask so handlers registered after start() on the same tick receive this event
+    await Promise.resolve();
+
     this.ctx.eventBus.emit({
       type: 'import:started',
       jobId: this.ctx.jobId,

@@ -53,7 +53,7 @@ describe('BulkImport — uncovered branches', () => {
       importer.from(new BufferSource(csv), new CsvParser());
       await importer.start(noop);
 
-      expect(importer.getStatus().state).toBe('COMPLETED');
+      expect(importer.getStatus().status).toBe('COMPLETED');
 
       // Second start should fail
       importer.from(new BufferSource(csv), new CsvParser());
@@ -94,7 +94,7 @@ describe('BulkImport — uncovered branches', () => {
 
       await startPromise;
 
-      expect(importer.getStatus().state).toBe('ABORTED');
+      expect(importer.getStatus().status).toBe('ABORTED');
       expect(() => {
         importer.resume();
       }).toThrow('Cannot resume an aborted import');
@@ -135,7 +135,7 @@ describe('BulkImport — uncovered branches', () => {
         throw new Error('DB connection failed');
       });
 
-      expect(importer.getStatus().state).toBe('FAILED');
+      expect(importer.getStatus().status).toBe('FAILED');
       expect(events).toContain('import:failed');
     });
 
@@ -168,7 +168,7 @@ describe('BulkImport — uncovered branches', () => {
         throw 'string error';
       });
 
-      expect(importer.getStatus().state).toBe('FAILED');
+      expect(importer.getStatus().status).toBe('FAILED');
     });
   });
 
@@ -196,7 +196,7 @@ describe('BulkImport — uncovered branches', () => {
         }
       });
 
-      expect(importer.getStatus().state).toBe('ABORTED');
+      expect(importer.getStatus().status).toBe('ABORTED');
       expect(events).toContain('aborted');
       expect(events).not.toContain('completed');
     });
@@ -216,7 +216,7 @@ describe('BulkImport — uncovered branches', () => {
         }
       });
 
-      expect(importer.getStatus().state).toBe('ABORTED');
+      expect(importer.getStatus().status).toBe('ABORTED');
     });
   });
 
@@ -235,7 +235,7 @@ describe('BulkImport — uncovered branches', () => {
 
       await importer.start(noop);
 
-      expect(importer.getStatus().state).toBe('FAILED');
+      expect(importer.getStatus().status).toBe('FAILED');
       expect(failedError).toContain('Validation failed for record 0');
     });
   });
@@ -335,7 +335,7 @@ describe('BulkImport — uncovered branches', () => {
         }
       });
 
-      expect(importer.getStatus().state).toBe('ABORTED');
+      expect(importer.getStatus().status).toBe('ABORTED');
     });
   });
 

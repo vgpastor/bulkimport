@@ -179,4 +179,45 @@ describe('JobMapper', () => {
       expect(restored.config.schema.fields).toHaveLength(original.config.schema.fields.length);
     });
   });
+
+  describe('toDomain with JSON-as-string (MySQL driver)', () => {
+    it('should parse batches when returned as a JSON string', () => {
+      const original = createSampleJobState();
+      const row = JobMapper.toRow(original);
+      // Simulate MySQL returning JSON columns as strings
+      (row as Record<string, unknown>)['batches'] = JSON.stringify(row.batches);
+
+      const restored = JobMapper.toDomain(row);
+
+      expect(restored.batches).toHaveLength(2);
+      expect(restored.batches[0]!.id).toBe('b1');
+      expect(restored.batches[0]!.status).toBe('COMPLETED');
+      expect(restored.batches[1]!.id).toBe('b2');
+    });
+
+    it('should parse config when returned as a JSON string', () => {
+      const original = createSampleJobState();
+      const row = JobMapper.toRow(original);
+      // Simulate MySQL returning JSON columns as strings
+      (row as Record<string, unknown>)['config'] = JSON.stringify(row.config);
+
+      const restored = JobMapper.toDomain(row);
+
+      expect(restored.config.batchSize).toBe(100);
+      expect(restored.config.continueOnError).toBe(true);
+      expect(restored.config.schema.fields).toHaveLength(4);
+    });
+
+    it('should handle both config and batches as strings simultaneously', () => {
+      const original = createSampleJobState();
+      const row = JobMapper.toRow(original);
+      (row as Record<string, unknown>)['config'] = JSON.stringify(row.config);
+      (row as Record<string, unknown>)['batches'] = JSON.stringify(row.batches);
+
+      const restored = JobMapper.toDomain(row);
+
+      expect(restored.config.batchSize).toBe(100);
+      expect(restored.batches).toHaveLength(2);
+    });
+  });
 });

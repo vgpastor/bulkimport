@@ -51,7 +51,7 @@ describe('Edge case: empty file', () => {
 
     expect(processed).toHaveLength(0);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.totalRecords).toBe(0);
     expect(status.progress.percentage).toBe(0);
   });
@@ -62,7 +62,7 @@ describe('Edge case: empty file', () => {
 
     expect(processed).toHaveLength(0);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.totalRecords).toBe(0);
   });
 
@@ -73,7 +73,7 @@ describe('Edge case: empty file', () => {
     // Whitespace-only content without headers produces unpredictable parser output.
     // The import should complete (not hang or crash).
     const status = importer.getStatus();
-    expect(['COMPLETED', 'FAILED']).toContain(status.state);
+    expect(['COMPLETED', 'FAILED']).toContain(status.status);
     expect(processed).toHaveLength(0);
   });
 });
@@ -322,7 +322,7 @@ describe('Edge case: single record', () => {
 
     expect(processed).toHaveLength(1);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.percentage).toBe(100);
     expect(status.progress.totalRecords).toBe(1);
   });
@@ -359,7 +359,7 @@ describe('Edge case: all records fail validation', () => {
     expect(await importer.getFailedRecords()).toHaveLength(2);
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.percentage).toBe(100);
     expect(status.progress.failedRecords).toBe(2);
     expect(status.progress.processedRecords).toBe(0);

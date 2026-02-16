@@ -34,8 +34,8 @@ function createRecord(
 ): ProcessedRecord {
   return {
     index,
-    raw: { email: `user${index}@test.com`, name: `User ${index}` },
-    parsed: { email: `user${index}@test.com`, name: `User ${index}` },
+    raw: { email: `user${String(index)}@test.com`, name: `User ${String(index)}` },
+    parsed: { email: `user${String(index)}@test.com`, name: `User ${String(index)}` },
     status,
     errors: [],
     ...extras,

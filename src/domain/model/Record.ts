@@ -8,6 +8,15 @@ export interface RawRecord {
   readonly [key: string]: unknown;
 }
 
+/**
+ * A record after alias resolution, transforms, and validation have been applied.
+ *
+ * Structurally identical to `RawRecord` but semantically distinct: values may
+ * have been split (arrays), transformed, or had defaults applied. This is the
+ * type received by the `RecordProcessorFn` callback.
+ */
+export type ParsedRecord = RawRecord;
+
 /** A record enriched with validation/processing status and errors. */
 export interface ProcessedRecord {
   /** Zero-based index of this record in the source data. */
@@ -15,7 +24,7 @@ export interface ProcessedRecord {
   /** Original key-value data as parsed from the source. */
   readonly raw: RawRecord;
   /** Transformed data after alias resolution and transforms. */
-  readonly parsed: RawRecord;
+  readonly parsed: ParsedRecord;
   /** Current lifecycle status. */
   readonly status: RecordStatus;
   /** Validation errors (populated when `status` is `'invalid'`). */

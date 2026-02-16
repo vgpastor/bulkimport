@@ -25,6 +25,8 @@ export interface FieldDefinition {
   readonly defaultValue?: unknown;
   /** For `'array'` type: separator used to split the string value. Default: `','`. */
   readonly separator?: string;
+  /** For `'array'` type: transform applied to each element after splitting (e.g. `(s) => s.trim().toLowerCase()`). */
+  readonly itemTransform?: (item: string) => string;
   /** Alternative column names that map to this field's canonical name. Case-insensitive. */
   readonly aliases?: readonly string[];
 }

@@ -187,7 +187,7 @@ describe('StreamSource', () => {
 
       expect(processed).toHaveLength(2);
       const status = importer.getStatus();
-      expect(status.state).toBe('COMPLETED');
+      expect(status.status).toBe('COMPLETED');
       expect(status.progress.percentage).toBe(100);
     });
   });

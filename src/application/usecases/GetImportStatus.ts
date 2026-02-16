@@ -6,6 +6,9 @@ import type { ImportJobContext } from '../ImportJobContext.js';
 
 /** Result of querying import job status. */
 export interface ImportStatusResult {
+  /** Current import status. */
+  readonly status: ImportStatus;
+  /** @deprecated Use `status` instead. Will be removed in the next major version. */
   readonly state: ImportStatus;
   readonly progress: ImportProgress;
   readonly batches: readonly Batch[];
@@ -16,8 +19,10 @@ export class GetImportStatus {
   constructor(private readonly ctx: ImportJobContext) {}
 
   execute(): ImportStatusResult {
+    const currentStatus = this.ctx.status;
     return {
-      state: this.ctx.status,
+      status: currentStatus,
+      state: currentStatus,
       progress: this.ctx.buildProgress(),
       batches: this.ctx.batches,
     };

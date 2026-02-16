@@ -1,4 +1,4 @@
-import type { RawRecord } from '../model/Record.js';
+import type { ParsedRecord } from '../model/Record.js';
 
 /** Context passed to the processor callback for each record. */
 export interface ProcessingContext {
@@ -19,7 +19,7 @@ export interface ProcessingContext {
 /**
  * Callback function that processes a single validated record.
  *
- * This is the consumer's entry point — implement your persistence, API calls,
- * or any side effects here. Throw an error to mark the record as failed.
+ * The `record` parameter contains data after alias resolution, transforms (including
+ * array splitting), and validation. Throw an error to mark the record as failed.
  */
-export type RecordProcessorFn = (record: RawRecord, context: ProcessingContext) => Promise<void>;
+export type RecordProcessorFn = (record: ParsedRecord, context: ProcessingContext) => Promise<void>;

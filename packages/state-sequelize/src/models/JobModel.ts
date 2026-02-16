@@ -7,8 +7,8 @@ export interface JobRow {
   config: unknown;
   batches: unknown;
   totalRecords: number;
-  startedAt: number | null;
-  completedAt: number | null;
+  startedAt: number | string | null;
+  completedAt: number | string | null;
 }
 
 export type JobModel = ModelStatic<Model>;

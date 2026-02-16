@@ -26,7 +26,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
     expect(processed).toEqual(['a@test.com', 'b@test.com', 'c@test.com']);
   });
 
@@ -47,7 +47,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
     expect(attempts.get('b@test.com')).toBe(3);
 
     const failedRecords = await importer.getFailedRecords();
@@ -71,7 +71,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
 
     const failedRecords = await importer.getFailedRecords();
     expect(failedRecords).toHaveLength(1);
@@ -164,7 +164,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('FAILED');
+    expect(importer.getStatus().status).toBe('FAILED');
     expect(failedError).toBe('Always fails');
   });
 
@@ -190,7 +190,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
 
     const processedRecords = await stateStore.getProcessedRecords(importer.getJobId());
     expect(processedRecords).toHaveLength(1);
@@ -249,7 +249,7 @@ describe('Retry mechanism', () => {
       await Promise.resolve();
     });
 
-    expect(importer.getStatus().state).toBe('COMPLETED');
+    expect(importer.getStatus().status).toBe('COMPLETED');
     expect(attempts.get('c@t.com')).toBe(2);
     expect(attempts.get('e@t.com')).toBe(2);
 

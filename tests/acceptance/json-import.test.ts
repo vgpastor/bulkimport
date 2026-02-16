@@ -39,7 +39,7 @@ describe('JSON import acceptance', () => {
     expect(processed[0]).toEqual(expect.objectContaining({ email: 'alice@test.com', name: 'Alice' }));
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.progress.totalRecords).toBe(3);
     expect(status.progress.percentage).toBe(100);
   });
@@ -61,7 +61,7 @@ describe('JSON import acceptance', () => {
 
     expect(processed).toHaveLength(2);
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
   });
 
   it('should validate JSON records against schema', async () => {
@@ -101,7 +101,7 @@ describe('JSON import acceptance', () => {
     });
 
     const status = importer.getStatus();
-    expect(status.state).toBe('COMPLETED');
+    expect(status.status).toBe('COMPLETED');
     expect(status.batches).toHaveLength(3); // 2, 2, 1
     expect(status.progress.totalRecords).toBe(5);
     expect(status.progress.percentage).toBe(100);

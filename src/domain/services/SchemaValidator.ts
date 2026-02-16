@@ -107,13 +107,16 @@ export class SchemaValidator {
       if (field.type === 'array' && transformed[field.name] !== undefined) {
         const raw = transformed[field.name];
         const separator = field.separator ?? ',';
-        transformed[field.name] =
-          typeof raw === 'string'
-            ? raw
-                .split(separator)
-                .map((s) => s.trim())
-                .filter((s) => s !== '')
-            : raw;
+        if (typeof raw === 'string') {
+          let items = raw
+            .split(separator)
+            .map((s) => s.trim())
+            .filter((s) => s !== '');
+          if (field.itemTransform) {
+            items = items.map(field.itemTransform);
+          }
+          transformed[field.name] = items;
+        }
       }
 
       if (field.transform && transformed[field.name] !== undefined) {

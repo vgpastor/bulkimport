@@ -1,5 +1,6 @@
 import type { ImportJobState, ImportJobConfig } from '@bulkimport/core';
 import type { JobRow } from '../models/JobModel.js';
+import { parseJson } from '../utils/parseJson.js';
 
 interface SerializableFieldDefinition {
   readonly name: string;
@@ -53,8 +54,8 @@ export function toRow(state: ImportJobState): JobRow {
 }
 
 export function toDomain(row: JobRow): ImportJobState {
-  const config = row.config as ImportJobConfig;
-  const batches = row.batches as ImportJobState['batches'];
+  const config = parseJson(row.config) as ImportJobConfig;
+  const batches = parseJson(row.batches) as ImportJobState['batches'];
 
   const base: ImportJobState = {
     id: row.id,

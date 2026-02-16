@@ -63,6 +63,7 @@ Each field supports:
 | `transform` | `(value: unknown) => unknown` | Transform value after parsing |
 | `defaultValue` | `unknown` | Applied when the field is undefined |
 | `separator` | `string` | For `array` type: split character (default: `','`) |
+| `itemTransform` | `(item: string) => string` | For `array` type: transform applied to each element after splitting |
 | `aliases` | `string[]` | Alternative column names that map to this field |
 
 ```typescript
@@ -111,6 +112,27 @@ const schema = {
 // CSV: email,tags,zones
 //      alice@test.com,"admin,editor","zone-a;zone-b"
 // → { email: 'alice@test.com', tags: ['admin', 'editor'], zones: ['zone-a', 'zone-b'] }
+```
+
+Use `itemTransform` to normalize each element after splitting:
+
+```typescript
+const schema = {
+  fields: [
+    { name: 'email', type: 'email', required: true },
+    {
+      name: 'zones',
+      type: 'array',
+      required: true,
+      separator: ';',
+      itemTransform: (s) => s.toLowerCase(),
+    },
+  ],
+};
+
+// CSV: email,zones
+//      alice@test.com," Zone-A ; Zone-B "
+// → { email: 'alice@test.com', zones: ['zone-a', 'zone-b'] }
 ```
 
 ### Column Aliases
@@ -172,6 +194,16 @@ importer.on('import:completed', (e) => {
 ```
 
 **Available events:** `import:started`, `import:completed`, `import:paused`, `import:aborted`, `import:failed`, `import:progress`, `batch:started`, `batch:completed`, `batch:failed`, `record:processed`, `record:failed`
+
+### Wildcard Subscription
+
+Subscribe to all events at once with `onAny()` — ideal for SSE or WebSocket relay:
+
+```typescript
+importer.onAny((event) => {
+  sseStream.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+});
+```
 
 ## Pause / Resume / Abort
 
@@ -427,16 +459,19 @@ The adapter creates two tables (`bulkimport_jobs` and `bulkimport_records`) and 
 
 | Method | Description |
 |---|---|
-| `static generateTemplate(schema)` | Generate a CSV header line from schema field names. |
+| `static generateTemplate(schema, options?)` | Generate a CSV template with header and optional synthetic example rows. |
 | `static restore(jobId, config)` | Restore an interrupted import from persisted state. Returns `null` if not found. |
 | `from(source, parser)` | Set the data source and parser. Returns `this` for chaining. |
 | `on(event, handler)` | Subscribe to a lifecycle event. Returns `this`. |
+| `onAny(handler)` | Subscribe to all events regardless of type. Returns `this`. |
+| `offAny(handler)` | Unsubscribe a wildcard handler. Returns `this`. |
 | `preview(maxRecords?)` | Validate a sample of records without processing. |
+| `count()` | Count total records in the source without modifying state. |
 | `start(processor)` | Begin processing all records through the provided callback. |
 | `pause()` | Pause processing after the current record. |
 | `resume()` | Resume a paused import. |
 | `abort()` | Cancel the import permanently. |
-| `getStatus()` | Get current state, progress, and batch details. |
+| `getStatus()` | Get current status, progress, and batch details. Returns `{ status, state (deprecated), progress, batches }`. |
 | `getFailedRecords()` | Get all records that failed validation or processing. Returns `Promise`. |
 | `getPendingRecords()` | Get records not yet processed. |
 | `getJobId()` | Get the unique job identifier. |

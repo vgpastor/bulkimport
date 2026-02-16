@@ -135,4 +135,97 @@ describe('EventBus', () => {
       });
     }).not.toThrow();
   });
+
+  it('should call onAny handlers for every event type', () => {
+    const bus = new EventBus();
+    const handler = vi.fn();
+
+    bus.onAny(handler);
+
+    const startEvent: ImportStartedEvent = {
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 0,
+      totalBatches: 0,
+      timestamp: Date.now(),
+    };
+
+    const batchEvent: BatchCompletedEvent = {
+      type: 'batch:completed',
+      jobId: 'test-job',
+      batchId: 'batch-1',
+      batchIndex: 0,
+      processedCount: 10,
+      failedCount: 0,
+      totalCount: 10,
+      timestamp: Date.now(),
+    };
+
+    bus.emit(startEvent);
+    bus.emit(batchEvent);
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenCalledWith(startEvent);
+    expect(handler).toHaveBeenCalledWith(batchEvent);
+  });
+
+  it('should remove onAny handlers with offAny()', () => {
+    const bus = new EventBus();
+    const handler = vi.fn();
+
+    bus.onAny(handler);
+    bus.offAny(handler);
+
+    bus.emit({
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 0,
+      totalBatches: 0,
+      timestamp: Date.now(),
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('should not propagate errors from throwing onAny handlers', () => {
+    const bus = new EventBus();
+    const good = vi.fn();
+
+    bus.onAny(() => {
+      throw new Error('wildcard exploded');
+    });
+    bus.onAny(good);
+
+    expect(() => {
+      bus.emit({
+        type: 'import:started',
+        jobId: 'test-job',
+        totalRecords: 0,
+        totalBatches: 0,
+        timestamp: Date.now(),
+      });
+    }).not.toThrow();
+
+    expect(good).toHaveBeenCalledOnce();
+  });
+
+  it('should call both typed and wildcard handlers', () => {
+    const bus = new EventBus();
+    const typed = vi.fn();
+    const wildcard = vi.fn();
+
+    bus.on('import:started', typed);
+    bus.onAny(wildcard);
+
+    bus.emit({
+      type: 'import:started',
+      jobId: 'test-job',
+      totalRecords: 0,
+      totalBatches: 0,
+      timestamp: Date.now(),
+    });
+
+    expect(typed).toHaveBeenCalledOnce();
+    expect(wildcard).toHaveBeenCalledOnce();
+  });
 });

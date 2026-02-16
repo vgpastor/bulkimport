@@ -1,5 +1,6 @@
 import type { ProcessedRecord, RawRecord, ValidationError } from '@bulkimport/core';
 import type { RecordRow } from '../models/RecordModel.js';
+import { parseJson } from '../utils/parseJson.js';
 
 export function toRow(jobId: string, batchId: string, record: ProcessedRecord): RecordRow {
   return {
@@ -17,10 +18,10 @@ export function toRow(jobId: string, batchId: string, record: ProcessedRecord): 
 export function toDomain(row: RecordRow): ProcessedRecord {
   const result: ProcessedRecord = {
     index: row.recordIndex,
-    raw: row.raw as RawRecord,
-    parsed: row.parsed as RawRecord,
+    raw: parseJson(row.raw) as RawRecord,
+    parsed: parseJson(row.parsed) as RawRecord,
     status: row.status as ProcessedRecord['status'],
-    errors: row.errors as readonly ValidationError[],
+    errors: parseJson(row.errors) as readonly ValidationError[],
   };
 
   if (row.processingError !== null) {
