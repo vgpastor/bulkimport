@@ -15,6 +15,14 @@ export interface Batch {
   readonly processedCount: number;
   /** Number of records that failed validation or processing. */
   readonly failedCount: number;
+  /** Worker ID that claimed this batch (distributed mode only). */
+  readonly workerId?: string;
+  /** Epoch timestamp when this batch was claimed (distributed mode only). */
+  readonly claimedAt?: number;
+  /** First record index in this batch, inclusive (distributed mode only). */
+  readonly recordStartIndex?: number;
+  /** Last record index in this batch, inclusive (distributed mode only). */
+  readonly recordEndIndex?: number;
 }
 
 /** Create a new batch in `PENDING` status. */

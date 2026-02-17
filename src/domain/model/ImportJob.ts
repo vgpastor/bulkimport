@@ -21,6 +21,8 @@ export interface ImportJobState {
   readonly totalRecords: number;
   readonly startedAt?: number;
   readonly completedAt?: number;
+  /** When `true`, this job uses distributed batch processing. */
+  readonly distributed?: boolean;
 }
 
 /** Real-time progress counters for an in-flight import. */

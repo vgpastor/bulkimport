@@ -5,6 +5,7 @@ on:
     tags:
       - 'v*'
       - '!state-sequelize-v*'
+      - '!distributed-v*'
 
 permissions:
   contents: write

@@ -130,6 +130,25 @@ export interface ChunkCompletedEvent {
   readonly timestamp: number;
 }
 
+/** Emitted when a worker claims a batch in distributed mode. */
+export interface BatchClaimedEvent {
+  readonly type: 'batch:claimed';
+  readonly jobId: string;
+  readonly batchId: string;
+  readonly batchIndex: number;
+  readonly workerId: string;
+  readonly timestamp: number;
+}
+
+/** Emitted when the prepare phase of distributed processing completes. */
+export interface DistributedPreparedEvent {
+  readonly type: 'distributed:prepared';
+  readonly jobId: string;
+  readonly totalRecords: number;
+  readonly totalBatches: number;
+  readonly timestamp: number;
+}
+
 /** Discriminated union of all domain events. */
 export type DomainEvent =
   | ImportStartedEvent
@@ -144,7 +163,9 @@ export type DomainEvent =
   | RecordProcessedEvent
   | RecordFailedEvent
   | RecordRetriedEvent
-  | ChunkCompletedEvent;
+  | ChunkCompletedEvent
+  | BatchClaimedEvent
+  | DistributedPreparedEvent;
 
 /** String literal union of all event type names. */
 export type EventType = DomainEvent['type'];

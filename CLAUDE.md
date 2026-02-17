@@ -175,7 +175,7 @@ Key rule: **NEVER remove or change public API directly.** Always deprecate first
 
 ## Current State & Known Gaps
 
-Published as `@bulkimport/core@0.4.1`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
+Published as `@bulkimport/core@0.5.0`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
 
 ### Implemented
 
@@ -214,6 +214,7 @@ Published as `@bulkimport/core@0.4.1`. CI/CD configured with GitHub Actions (lin
 - Lifecycle hooks (`ImportHooks`) — 4 optional async hooks in the processing pipeline: `beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`. Hooks receive `HookContext` with job/batch/record metadata and abort signal. Hook errors mark the record as failed (respects `continueOnError`).
 - `DuplicateChecker` port — external duplicate detection against database/API. Only invoked for records that pass internal validation. `DuplicateCheckResult` with `isDuplicate`, `existingId?`, `metadata?`. Optional `checkBatch()` for batch-optimized checks. Checker errors handled gracefully.
 - Extended error model — `ValidationError` now supports optional `severity` (`'error'` | `'warning'`), `category` (`'VALIDATION'` | `'FORMAT'` | `'DUPLICATE'` | `'PROCESSING'` | `'CUSTOM'`), `suggestion`, and `metadata`. Warning-severity errors are non-blocking (record passes to processor with warnings preserved). `hasErrors()`, `getWarnings()`, `getErrors()` helper functions. `ValidationFieldResult` extended with `severity`, `suggestion`, `metadata`. All built-in errors include `category`.
+- Distributed processing domain types — `DistributedStateStore` port, `BatchReservation`, `ClaimBatchResult`, `DistributedJobStatus` types, `isDistributedStateStore()` type guard, `batch:claimed` and `distributed:prepared` domain events. All additive, zero breaking changes.
 - 362 acceptance + unit tests passing (including concurrency, state persistence, restore, retry, XML import, edge cases, user feedback features, processChunk, hooks, duplicate checker, extended errors).
 - npm workspaces configured for monorepo subpackages (`packages/*`).
 - Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
@@ -222,7 +223,8 @@ Published as `@bulkimport/core@0.4.1`. CI/CD configured with GitHub Actions (lin
 
 ### Subpackages
 
-- **`@bulkimport/state-sequelize`** (`packages/state-sequelize/`) — Sequelize v6 adapter for the `StateStore` port. Persists job state and records to SQL databases. 40 tests (19 unit + 21 integration with SQLite in-memory). Separate npm package with `peerDependencies` on `@bulkimport/core` and `sequelize`.
+- **`@bulkimport/state-sequelize`** (`packages/state-sequelize/`) — Sequelize v6 adapter for the `StateStore` + `DistributedStateStore` ports. Persists job state, records, and distributed batch metadata to SQL databases. 79 tests (32 unit + 47 integration with SQLite in-memory). Separate npm package with `peerDependencies` on `@bulkimport/core` and `sequelize`. New `bulkimport_batches` table for distributed mode with atomic batch claiming, optimistic locking, stale batch recovery, and exactly-once job finalization.
+- **`@bulkimport/distributed`** (`packages/distributed/`) — Distributed multi-worker batch processing. Two-phase model: `prepare()` (orchestrator streams file, materializes records in StateStore) + `processWorkerBatch()` (N workers claim batches atomically). Recovery via `reclaimStaleBatches()`. Exactly-once completion via `tryFinalizeJob()`. 13 acceptance tests. Separate npm package with `peerDependency` on `@bulkimport/core >= 0.4.0`.
 
 ### Known Gaps
 

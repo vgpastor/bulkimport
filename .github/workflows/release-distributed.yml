@@ -1,9 +1,9 @@
-name: Release state-sequelize
+name: Release distributed
 
 on:
   push:
     tags:
-      - 'state-sequelize-v*'
+      - 'distributed-v*'
 
 permissions:
   contents: write
@@ -21,12 +21,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm test -w packages/state-sequelize
+      - run: npm test -w packages/distributed
       - name: Typecheck
-        working-directory: packages/state-sequelize
+        working-directory: packages/distributed
         run: npx tsc --noEmit
       - name: Lint
-        working-directory: packages/state-sequelize
+        working-directory: packages/distributed
         run: npx eslint src/ tests/
 
   publish:
@@ -44,19 +44,19 @@ jobs:
         run: npm install -g npm@latest
       - run: npm ci
       - run: npm run build
-      - name: Build state-sequelize
-        working-directory: packages/state-sequelize
+      - name: Build distributed
+        working-directory: packages/distributed
         run: npm run build
       - name: Verify version matches tag
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/state-sequelize-v}"
-          PKG_VERSION=$(node -p "require('./packages/state-sequelize/package.json').version")
+          TAG_VERSION="${GITHUB_REF#refs/tags/distributed-v}"
+          PKG_VERSION=$(node -p "require('./packages/distributed/package.json').version")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
             exit 1
           fi
       - name: Publish
-        working-directory: packages/state-sequelize
+        working-directory: packages/distributed
         run: npm publish --access public --provenance --ignore-scripts
 
   github-release:
@@ -71,11 +71,11 @@ jobs:
         id: notes
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PREV_TAG=$(git tag --sort=-creatordate | grep "state-sequelize-v" | grep -v "$TAG" | head -n 1 || echo "")
+          PREV_TAG=$(git tag --sort=-creatordate | grep "distributed-v" | grep -v "$TAG" | head -n 1 || echo "")
           if [ -z "$PREV_TAG" ]; then
-            NOTES=$(git log --pretty=format:"- %s" HEAD -- packages/state-sequelize/)
+            NOTES=$(git log --pretty=format:"- %s" HEAD -- packages/distributed/)
           else
-            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG".."$TAG" -- packages/state-sequelize/)
+            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG".."$TAG" -- packages/distributed/)
           fi
           echo "notes<<EOF" >> "$GITHUB_OUTPUT"
           echo "$NOTES" >> "$GITHUB_OUTPUT"
@@ -88,7 +88,7 @@ jobs:
             ## Install
 
             ```bash
-            npm install @bulkimport/state-sequelize
+            npm install @bulkimport/distributed
             ```
 
             ## Changes

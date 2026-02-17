@@ -9,6 +9,7 @@ export interface JobRow {
   totalRecords: number;
   startedAt: number | string | null;
   completedAt: number | string | null;
+  distributed: boolean;
 }
 
 export type JobModel = ModelStatic<Model>;
@@ -47,6 +48,11 @@ export function defineJobModel(sequelize: Sequelize): JobModel {
       completedAt: {
         type: DataTypes.BIGINT,
         allowNull: true,
+      },
+      distributed: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
     },
     {

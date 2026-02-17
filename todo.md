@@ -22,6 +22,7 @@ Fases completadas: 1 (Foundation), 2 (Happy Path), 3 (Validación), 4 (Control d
 - [x] **Hooks pre/post record** — 4 hooks opcionales en el pipeline: `beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`. Permiten enriquecimiento, modificación de errores, y side effects post-procesamiento.
 - [x] **DuplicateChecker port** — detección de duplicados contra fuentes externas (DB, API). Comprueba solo registros que pasan validación interna. Error code `EXTERNAL_DUPLICATE`. Batch-optimized `checkBatch()` optional.
 - [x] **Errores extensibles** — `severity` (`error`/`warning`), `category`, `suggestion`, `metadata` opcionales en `ValidationError`. Helpers `hasErrors()`, `getWarnings()`, `getErrors()`. Warnings son non-blocking (el record pasa al processor).
+- [x] **Procesamiento distribuido paralelo** — `@bulkimport/distributed` package para fan-out de N workers (AWS Lambda, etc.). Modelo de dos fases: orquestador `prepare()` materializa records + N workers `processWorkerBatch()` reclaman batches con locking atómico. Recovery: `reclaimStaleBatches()` para timeout-based reclaim. Exactly-once finalization vía `tryFinalizeJob()`. Implementado en `SequelizeStateStore` como `DistributedStateStore`.
 
 ---
 

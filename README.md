@@ -197,7 +197,7 @@ importer.on('import:completed', (e) => {
 });
 ```
 
-**Available events:** `import:started`, `import:completed`, `import:paused`, `import:aborted`, `import:failed`, `import:progress`, `batch:started`, `batch:completed`, `batch:failed`, `record:processed`, `record:failed`, `record:retried`, `chunk:completed`
+**Available events:** `import:started`, `import:completed`, `import:paused`, `import:aborted`, `import:failed`, `import:progress`, `batch:started`, `batch:completed`, `batch:failed`, `batch:claimed`, `record:processed`, `record:failed`, `record:retried`, `chunk:completed`, `distributed:prepared`
 
 ### Wildcard Subscription
 
@@ -256,6 +256,54 @@ export async function POST(req: Request) {
 You can limit by record count (`maxRecords`) or duration (`maxDurationMs`), or both.
 
 > **Important:** In serverless environments (Vercel, Lambda, Cloudflare Workers) both the filesystem and memory are ephemeral — they do not persist between invocations. You must use an external `StateStore` such as [`@bulkimport/state-sequelize`](./packages/state-sequelize/) or implement your own adapter (Redis, DynamoDB, etc.). The source data must also be accessible on every invocation via a URL, S3, or similar — not a local file path. `FileStateStore` and `InMemoryStateStore` are designed for long-running servers or local development only.
+
+## Distributed Processing (Multi-Worker)
+
+For large-scale imports (hundreds of thousands of records), fan out processing across N parallel workers using [`@bulkimport/distributed`](./packages/distributed/):
+
+```bash
+npm install @bulkimport/distributed @bulkimport/state-sequelize sequelize pg
+```
+
+The distributed model has two phases:
+
+1. **Prepare** (single orchestrator): streams the source file and materializes all records in the database.
+2. **Process** (N parallel workers): each worker atomically claims a batch, processes it, and the last one finalizes the job.
+
+```typescript
+import { DistributedImport } from '@bulkimport/distributed';
+import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { CsvParser, UrlSource } from '@bulkimport/core';
+
+const stateStore = new SequelizeStateStore(sequelize);
+await stateStore.initialize();
+
+const di = new DistributedImport({
+  schema: { fields: [/* ... */] },
+  batchSize: 500,
+  stateStore,
+  continueOnError: true,
+});
+
+// === Orchestrator Lambda ===
+const source = new UrlSource('https://storage.example.com/data.csv');
+const { jobId, totalBatches } = await di.prepare(source, new CsvParser());
+// Send { jobId } to N workers via SQS/SNS
+
+// === Worker Lambda ===
+const workerId = context.awsRequestId;
+while (true) {
+  const result = await di.processWorkerBatch(jobId, async (record) => {
+    await db.users.upsert(record);
+  }, workerId);
+
+  if (!result.claimed || result.jobComplete) break;
+}
+```
+
+Workers self-coordinate through atomic batch claiming -- no central dispatcher needed. If a worker crashes, its batch is automatically reclaimed after a configurable timeout (`staleBatchTimeoutMs`, default 15 min).
+
+> **Note:** The processor callback **must be idempotent** since batches may be re-processed after a crash. Use `ON CONFLICT DO NOTHING` or similar patterns. See the [`@bulkimport/distributed` README](./packages/distributed/README.md) for the full API and architecture details.
 
 ## Lifecycle Hooks
 
@@ -700,7 +748,8 @@ if (restored) {
 
 | Package | Description |
 |---|---|
-| [`@bulkimport/state-sequelize`](./packages/state-sequelize/) | Sequelize v6 adapter for `StateStore`. Persists to PostgreSQL, MySQL, SQLite, etc. |
+| [`@bulkimport/state-sequelize`](./packages/state-sequelize/) | Sequelize v6 adapter for `StateStore` + `DistributedStateStore`. Persists to PostgreSQL, MySQL, SQLite, etc. |
+| [`@bulkimport/distributed`](./packages/distributed/) | Distributed multi-worker batch processing. Fan out N Lambda/Cloud Functions to process in parallel. |
 
 ## Requirements
 

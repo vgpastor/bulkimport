@@ -50,6 +50,7 @@ export function toRow(state: ImportJobState): JobRow {
     totalRecords: state.totalRecords,
     startedAt: state.startedAt ?? null,
     completedAt: state.completedAt ?? null,
+    distributed: state.distributed ?? false,
   };
 }
 
@@ -65,15 +66,17 @@ export function toDomain(row: JobRow): ImportJobState {
     totalRecords: row.totalRecords,
   };
 
-  if (row.startedAt !== null && row.completedAt !== null) {
-    return { ...base, startedAt: Number(row.startedAt), completedAt: Number(row.completedAt) };
-  }
+  const result = { ...base };
+
   if (row.startedAt !== null) {
-    return { ...base, startedAt: Number(row.startedAt) };
+    (result as Record<string, unknown>)['startedAt'] = Number(row.startedAt);
   }
   if (row.completedAt !== null) {
-    return { ...base, completedAt: Number(row.completedAt) };
+    (result as Record<string, unknown>)['completedAt'] = Number(row.completedAt);
+  }
+  if (row.distributed) {
+    (result as Record<string, unknown>)['distributed'] = true;
   }
 
-  return base;
+  return result;
 }

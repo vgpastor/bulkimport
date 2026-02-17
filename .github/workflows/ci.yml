@@ -58,10 +58,23 @@ jobs:
       - run: npm run build
       - run: npm test -w packages/state-sequelize
 
+  test-distributed:
+    name: Test distributed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -w packages/distributed
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test, test-state-sequelize]
+    needs: [lint, test, test-state-sequelize, test-distributed]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

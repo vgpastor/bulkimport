@@ -1,8 +1,8 @@
 # @bulkimport/state-sequelize
 
-Sequelize-based `StateStore` adapter for [@bulkimport/core](https://www.npmjs.com/package/@bulkimport/core).
+Sequelize-based `StateStore` and `DistributedStateStore` adapter for [@bulkimport/core](https://www.npmjs.com/package/@bulkimport/core).
 
-Persists import job state and processed records to any relational database supported by Sequelize v6 (PostgreSQL, MySQL, MariaDB, SQLite, MS SQL Server).
+Persists import job state, processed records, and distributed batch metadata to any relational database supported by Sequelize v6 (PostgreSQL, MySQL, MariaDB, SQLite, MS SQL Server).
 
 ## Installation
 
@@ -15,7 +15,7 @@ npm install @bulkimport/state-sequelize
 ## Usage
 
 ```typescript
-import { BulkImport } from '@bulkimport/core';
+import { BulkImport, CsvParser, BufferSource } from '@bulkimport/core';
 import { SequelizeStateStore } from '@bulkimport/state-sequelize';
 import { Sequelize } from 'sequelize';
 
@@ -29,27 +29,79 @@ await stateStore.initialize();
 // Pass it to BulkImport
 const importer = new BulkImport({
   schema: { fields: [/* ... */] },
-  source: mySource,
-  parser: myParser,
-  processor: myProcessor,
+  batchSize: 500,
+  continueOnError: true,
   stateStore,
 });
 
-await importer.start();
+importer.from(new BufferSource(csvString), new CsvParser());
+
+await importer.start(async (record) => {
+  await sequelize.models.User.create(record);
+});
 ```
 
 ## Database Tables
 
-The adapter creates two tables:
+The adapter creates three tables:
 
-- **`bulkimport_jobs`** - Import job state (status, config, batches as JSON)
-- **`bulkimport_records`** - Individual processed records (status, raw/parsed data, errors)
+- **`bulkimport_jobs`** -- Import job state (status, config, batches as JSON, distributed flag)
+- **`bulkimport_records`** -- Individual processed records (status, raw/parsed data, errors)
+- **`bulkimport_batches`** -- Batch metadata for distributed processing (status, workerId, version for optimistic locking)
 
 Tables are created automatically when you call `initialize()`. The call is idempotent.
 
+## Distributed Processing
+
+`SequelizeStateStore` fully implements the `DistributedStateStore` interface, enabling multi-worker parallel processing with [`@bulkimport/distributed`](https://www.npmjs.com/package/@bulkimport/distributed).
+
+```bash
+npm install @bulkimport/distributed
+```
+
+```typescript
+import { DistributedImport } from '@bulkimport/distributed';
+import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+
+const stateStore = new SequelizeStateStore(sequelize);
+await stateStore.initialize();
+
+const di = new DistributedImport({
+  schema: { fields: [/* ... */] },
+  batchSize: 500,
+  stateStore,
+});
+
+// Orchestrator: prepare the job
+const { jobId, totalBatches } = await di.prepare(source, parser);
+
+// Worker: claim and process batches
+const result = await di.processWorkerBatch(jobId, processor, workerId);
+```
+
+### Distributed Features
+
+| Feature | Description |
+|---|---|
+| **Atomic batch claiming** | `claimBatch()` uses transactions + optimistic locking (`version` column) to ensure no two workers claim the same batch |
+| **Stale batch recovery** | `reclaimStaleBatches(timeoutMs)` resets batches stuck in PROCESSING beyond the timeout |
+| **Exactly-once finalization** | `tryFinalizeJob()` atomically transitions the job to COMPLETED/FAILED only once |
+| **Batch record storage** | `saveBatchRecords()` / `getBatchRecords()` for bulk record persistence |
+| **Distributed status** | `getDistributedStatus()` aggregates batch counts by status |
+
+### Recommended Databases for Distributed Mode
+
+| Database | Row Locking | Recommended |
+|---|---|---|
+| PostgreSQL | `FOR UPDATE SKIP LOCKED` | Yes |
+| MySQL 8+ | `FOR UPDATE SKIP LOCKED` | Yes |
+| MariaDB 10.6+ | `FOR UPDATE SKIP LOCKED` | Yes |
+| SQLite | Single-writer (no concurrent transactions) | Dev/test only |
+
 ## Limitations
 
-Schema fields containing non-serializable values (`customValidator`, `transform`, `pattern`) are stripped when saving to the database. When restoring a job, the consumer must re-inject these fields.
+- Schema fields containing non-serializable values (`customValidator`, `transform`, `pattern`) are stripped when saving to the database. When restoring a job, the consumer must re-inject these fields.
+- SQLite does not support concurrent transactions, so distributed batch claiming is limited to sequential use in tests. Use PostgreSQL or MySQL for production distributed processing.
 
 ## License
 
