@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/distributed",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Distributed parallel batch processing for @batchactions/core — fan-out N workers to process batches concurrently",
   "type": "module",
   "exports": {

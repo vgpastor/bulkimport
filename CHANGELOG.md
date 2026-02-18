@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.2] - 2026-02-18
+
+### Changed
+
+- **Package rename & version downgrade** — All packages have been renamed from `@bulkimport/*` to `@batchactions/*`. Version numbers have been reset to `0.0.x` to reflect the new package scope. This is a **downgrade in version number only** — all functionality from the previous releases under `@bulkimport/*` is preserved.
+  - `@bulkimport/core` → `@batchactions/core`
+  - `@bulkimport/import` → `@batchactions/import` *(new package, extracted from core)*
+  - `@bulkimport/distributed` → `@batchactions/distributed`
+  - `@bulkimport/state-sequelize` → `@batchactions/state-sequelize`
+- **BREAKING: Database table names renamed** (`@batchactions/state-sequelize`) — `bulkimport_jobs` → `batchactions_jobs`, `bulkimport_records` → `batchactions_records`, `bulkimport_batches` → `batchactions_batches`.
+
+### Added
+
+- **Per-package `CLAUDE.md`** — Each package now has its own `CLAUDE.md` with architecture, public API, testing, and build instructions for more granular AI assistant context.
+
+---
+
+## Historical Changelog (under previous `@bulkimport/*` package names)
+
+> The entries below document the development history under the original `@bulkimport/*` package names.
+> All functionality is carried forward into the new `@batchactions/*` packages.
+
+---
+
 ## [0.5.0] - 2026-02-17
 
 ### Added

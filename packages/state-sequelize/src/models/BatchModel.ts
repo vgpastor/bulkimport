@@ -74,7 +74,7 @@ export function defineBatchModel(sequelize: Sequelize): BatchModel {
       },
     },
     {
-      tableName: 'bulkimport_batches',
+      tableName: 'batchactions_batches',
       timestamps: false,
       indexes: [{ fields: ['jobId', 'status'] }, { unique: true, fields: ['jobId', 'batchIndex'] }],
     },

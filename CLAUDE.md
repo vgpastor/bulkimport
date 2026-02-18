@@ -235,7 +235,7 @@ npm run build    # tsup across all workspaces → dist/ (ESM + CJS + .d.ts)
 
 ## Current State & Known Gaps
 
-Monorepo refactored from `@bulkimport/core` to `@batchactions` with 4 packages. All packages at version `0.0.1`.
+Monorepo refactored from `@bulkimport/core` to `@batchactions` with 4 packages. All packages at version `0.0.2`.
 
 ### Implemented
 
@@ -280,7 +280,7 @@ Monorepo refactored from `@bulkimport/core` to `@batchactions` with 4 packages. 
 - Sequelize v6 adapter for `StateStore` + `DistributedStateStore` ports.
 - Persists job state, records, and distributed batch metadata to SQL databases.
 - Atomic batch claiming, optimistic locking, stale batch recovery, exactly-once job finalization.
-- Tables: `bulkimport_jobs`, `bulkimport_records`, `bulkimport_batches` (names kept for migration compatibility).
+- Tables: `batchactions_jobs`, `batchactions_records`, `batchactions_batches`.
 
 **Monorepo:**
 - npm workspaces with `packages/*` pattern.

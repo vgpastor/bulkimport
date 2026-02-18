@@ -15,7 +15,8 @@ Fases completadas: 1–15 (Foundation → Code Quality & Deduplication), 16 (Mon
 
 ## Deuda técnica
 
-- [ ] Migrar table names de `bulkimport_*` a `batchactions_*` en `@batchactions/state-sequelize` (requiere migration strategy para usuarios existentes)
-- [ ] Publicar paquetes `@batchactions/core`, `@batchactions/import`, `@batchactions/distributed`, `@batchactions/state-sequelize` a npm
-- [ ] Actualizar CI/CD pipeline (GitHub Actions) para monorepo con 4 paquetes
-- [ ] Considerar crear CLAUDE.md por paquete para contextos más granulares
+- [x] ~~Migrar table names de `bulkimport_*` a `batchactions_*` en `@batchactions/state-sequelize`~~ *(v0.0.2 — 2026-02-18)*
+- [x] ~~Publicar paquetes `@batchactions/core`, `@batchactions/import`, `@batchactions/distributed`, `@batchactions/state-sequelize` a npm~~ *(v0.0.2 — 2026-02-18)*
+- [x] ~~Actualizar CI/CD pipeline (GitHub Actions) para monorepo con 4 paquetes~~ *(release workflows configurados)*
+- [x] ~~Crear CLAUDE.md por paquete para contextos más granulares~~ *(v0.0.2 — 2026-02-18)*
+

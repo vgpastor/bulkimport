@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Backend-agnostic batch processing engine with state management, concurrency control, and lifecycle events",
   "type": "module",
   "exports": {

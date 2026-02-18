@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/import",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Import-specific layer for @batchactions/core with schema validation, parsers, and template generation",
   "type": "module",
   "main": "./dist/index.cjs",

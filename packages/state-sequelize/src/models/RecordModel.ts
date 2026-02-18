@@ -59,7 +59,7 @@ export function defineRecordModel(sequelize: Sequelize): RecordModel {
       },
     },
     {
-      tableName: 'bulkimport_records',
+      tableName: 'batchactions_records',
       timestamps: false,
       indexes: [
         { fields: ['jobId', 'status'] },

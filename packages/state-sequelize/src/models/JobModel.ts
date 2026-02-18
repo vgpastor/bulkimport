@@ -56,7 +56,7 @@ export function defineJobModel(sequelize: Sequelize): JobModel {
       },
     },
     {
-      tableName: 'bulkimport_jobs',
+      tableName: 'batchactions_jobs',
       timestamps: false,
     },
   );

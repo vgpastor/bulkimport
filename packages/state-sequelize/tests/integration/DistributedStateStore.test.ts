@@ -68,7 +68,7 @@ describe('SequelizeStateStore — Distributed', () => {
 
     // Insert batch metadata via raw query since we don't expose batch creation method
     // In production, the PrepareDistributedImport use case would do this
-    const batchTable = 'bulkimport_batches';
+    const batchTable = 'batchactions_batches';
     await sequelize.query(
       `INSERT INTO ${batchTable} (id, "jobId", "batchIndex", status, "workerId", "claimedAt", "recordStartIndex", "recordEndIndex", "processedCount", "failedCount", version) VALUES
       ('b1', 'job-001', 0, 'PENDING', NULL, NULL, 0, 2, 0, 0, 0),
@@ -231,7 +231,7 @@ describe('SequelizeStateStore — Distributed', () => {
       await store.claimBatch('job-001', 'worker-1');
 
       // Manually set claimedAt to a very old timestamp
-      await sequelize.query(`UPDATE bulkimport_batches SET "claimedAt" = 1000000000000 WHERE id = 'b1'`);
+      await sequelize.query(`UPDATE batchactions_batches SET "claimedAt" = 1000000000000 WHERE id = 'b1'`);
 
       // Reclaim with a short timeout
       const reclaimed = await store.reclaimStaleBatches('job-001', 60_000);

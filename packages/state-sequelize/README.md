@@ -46,9 +46,9 @@ await importer.start(async (record) => {
 
 The adapter creates three tables:
 
-- **`bulkimport_jobs`** -- Import job state (status, config, batches as JSON, distributed flag)
-- **`bulkimport_records`** -- Individual processed records (status, raw/parsed data, errors)
-- **`bulkimport_batches`** -- Batch metadata for distributed processing (status, workerId, version for optimistic locking)
+- **`batchactions_jobs`** -- Import job state (status, config, batches as JSON, distributed flag)
+- **`batchactions_records`** -- Individual processed records (status, raw/parsed data, errors)
+- **`batchactions_batches`** -- Batch metadata for distributed processing (status, workerId, version for optimistic locking)
 
 Tables are created automatically when you call `initialize()`. The call is idempotent.
 
