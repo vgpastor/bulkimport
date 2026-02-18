@@ -1,7 +1,7 @@
 {
   "name": "@batchactions/distributed",
-  "version": "0.0.2",
-  "description": "Distributed parallel batch processing for @batchactions/core — fan-out N workers to process batches concurrently",
+  "version": "0.0.3",
+  "description": "Distributed parallel batch processing for @batchactions/core with fan-out workers",
   "type": "module",
   "exports": {
     ".": {
@@ -22,7 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/ tests/"
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "batchactions",
@@ -34,7 +37,11 @@
     "worker"
   ],
   "license": "MIT",
-  "author": "Víctor Garcia <vgpastor@ingenierosweb.co>",
+  "author": "Victor Garcia <vgpastor@ingenierosweb.co>",
+  "homepage": "https://github.com/vgpastor/batchactions/tree/main/packages/distributed#readme",
+  "bugs": {
+    "url": "https://github.com/vgpastor/batchactions/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/vgpastor/batchactions",
@@ -51,12 +58,12 @@
     "@batchactions/core": "*",
     "@batchactions/import": "*",
     "@types/node": "^22.13.4",
-    "@typescript-eslint/eslint-plugin": "^8.24.1",
-    "@typescript-eslint/parser": "^8.24.1",
-    "eslint": "^9.20.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
+    "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.0.1",
-    "tsup": "^8.3.6",
+    "tsup": "^8.5.1",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.6"
+    "vitest": "^4.0.0"
   }
 }

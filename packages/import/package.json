@@ -1,7 +1,10 @@
 {
   "name": "@batchactions/import",
-  "version": "0.0.2",
-  "description": "Import-specific layer for @batchactions/core with schema validation, parsers, and template generation",
+  "version": "0.0.3",
+  "description": "Import facade for @batchactions/core with schema validation, parsers, and template generation",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -14,7 +17,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -22,20 +26,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\""
   },
   "peerDependencies": {
     "@batchactions/core": ">=0.0.1"
   },
   "dependencies": {
-    "papaparse": "^5.4.1"
+    "papaparse": "^5.5.0"
   },
   "devDependencies": {
     "@batchactions/core": "*",
     "@types/papaparse": "^5.3.14",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.4",
-    "tsup": "^8.4.0"
+    "vitest": "^4.0.0",
+    "tsup": "^8.5.1"
   },
   "keywords": [
     "bulk-import",
@@ -45,6 +51,11 @@
     "schema-validation",
     "batch-processing"
   ],
+  "author": "Victor Garcia <vgpastor@ingenierosweb.co>",
+  "homepage": "https://github.com/vgpastor/batchactions/tree/main/packages/import#readme",
+  "bugs": {
+    "url": "https://github.com/vgpastor/batchactions/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/vgpastor/batchactions",

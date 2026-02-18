@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Backend-agnostic batch processing engine with state management, concurrency control, and lifecycle events",
   "type": "module",
   "exports": {
@@ -41,7 +41,11 @@
     "resume"
   ],
   "license": "MIT",
-  "author": "Víctor Garcia <vgpastor@ingenierosweb.co>",
+  "author": "Victor Garcia <vgpastor@ingenierosweb.co>",
+  "homepage": "https://github.com/vgpastor/batchactions/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/vgpastor/batchactions/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/vgpastor/batchactions",
@@ -52,8 +56,8 @@
   },
   "sideEffects": false,
   "devDependencies": {
-    "@vitest/coverage-v8": "^3.0.6",
-    "tsup": "^8.3.6",
-    "vitest": "^3.0.6"
+    "@vitest/coverage-v8": "^4.0.0",
+    "tsup": "^8.5.1",
+    "vitest": "^4.0.0"
   }
 }
