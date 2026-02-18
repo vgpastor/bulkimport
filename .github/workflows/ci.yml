@@ -81,15 +81,15 @@ jobs:
       - run: npm run build
       - name: Verify dist output
         run: |
-          test -f packages/core/dist/index.mjs
+          test -f packages/core/dist/index.js
           test -f packages/core/dist/index.cjs
           test -f packages/core/dist/index.d.ts
-          test -f packages/import/dist/index.mjs
+          test -f packages/import/dist/index.js
           test -f packages/import/dist/index.cjs
           test -f packages/import/dist/index.d.ts
-          test -f packages/distributed/dist/index.mjs
+          test -f packages/distributed/dist/index.js
           test -f packages/distributed/dist/index.cjs
           test -f packages/distributed/dist/index.d.ts
-          test -f packages/state-sequelize/dist/index.mjs
+          test -f packages/state-sequelize/dist/index.js
           test -f packages/state-sequelize/dist/index.cjs
           test -f packages/state-sequelize/dist/index.d.ts
