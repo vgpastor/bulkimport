@@ -27,6 +27,7 @@ jobs:
 
   test:
     name: Test (Node ${{ matrix.node-version }})
+    needs: [lint]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,6 +45,7 @@ jobs:
 
   test-state-sequelize:
     name: Test state-sequelize
+    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -57,6 +59,7 @@ jobs:
 
   test-distributed:
     name: Test distributed
+    needs: [lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
