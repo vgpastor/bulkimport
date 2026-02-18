@@ -1,4 +1,4 @@
-# Contributing to @bulkimport/core
+# Contributing to @batchactions
 
 Thanks for your interest in contributing! This document covers how to set up the project, the coding standards we follow, and how to submit changes.
 
@@ -28,16 +28,13 @@ npm run format
 ## Project Structure
 
 ```
-src/
-├── domain/           # Pure domain — zero external dependencies
-│   ├── model/        # Entities, value objects, state machines
-│   ├── ports/        # Interfaces (DataSource, SourceParser, StateStore, RecordProcessor)
-│   ├── events/       # Domain events
-│   └── services/     # Domain services (SchemaValidator)
-├── application/      # Application layer (EventBus)
-├── infrastructure/   # Concrete adapters (CsvParser, BufferSource, InMemoryStateStore)
-├── BulkImport.ts     # Main facade
-└── index.ts          # Public API exports
+packages/
+├── core/             # Generic batch processing engine
+│   └── src/          # Domain model, ports, events (Business Logic)
+├── import/           # Import-specific layer (Schema validation, Parsers)
+│   └── src/          # BulkImport facade
+├── distributed/      # Distributed processing orchestration
+└── state-sequelize/  # Sequelize adapter for StateStore
 ```
 
 ### Layer Rules
@@ -47,7 +44,7 @@ These rules are non-negotiable:
 - **`domain/`** must NOT import from `application/`, `infrastructure/`, or any external package.
 - **`application/`** may import from `domain/` only.
 - **`infrastructure/`** implements `domain/ports/` interfaces and may use external packages.
-- **`BulkImport.ts`** is the composition root.
+- **Composition Roots**: Each package has a main entry point (e.g. `BatchEngine.ts` in core, `BulkImport.ts` in import).
 - **`index.ts`** is the public API surface. Every export is intentional — adding or removing exports is a breaking change.
 
 ## Design Principles
@@ -157,7 +154,7 @@ This is a public library. Our users depend on the stability of the API. **Breaki
 1. **Deprecate first** (in a minor or patch release):
    - Add `@deprecated` JSDoc with the target removal version and migration path.
    - Keep the old API working alongside the new one.
-   - Emit a runtime warning on first use: `"[bulkimport] oldMethod() is deprecated and will be removed in vX.0.0. Use newMethod() instead."`
+   - Emit a runtime warning on first use: `"[batchactions] oldMethod() is deprecated and will be removed in vX.0.0. Use newMethod() instead."`
    - Document in CHANGELOG.
    - Existing tests for the deprecated API must keep passing.
 

@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Sequelize } from 'sequelize';
+import { SQLite3Wrapper } from '../better-sqlite3-adapter.js';
 import { SequelizeStateStore } from '../../src/SequelizeStateStore.js';
 import type { JobState, ProcessedRecord } from '@batchactions/core';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 function createJobState(overrides?: Partial<JobState>): JobState {
   return {
@@ -45,16 +49,50 @@ function createRecord(
 describe('SequelizeStateStore', () => {
   let sequelize: Sequelize;
   let store: SequelizeStateStore;
+  let dbPath: string;
 
   beforeEach(async () => {
-    sequelize = new Sequelize('sqlite::memory:', { logging: false });
+    dbPath = path.join(os.tmpdir(), `test-seq-${String(Date.now())}-${String(Math.random())}.sqlite`);
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: dbPath,
+      logging: false,
+      dialectModule: { Database: SQLite3Wrapper },
+      pool: {
+        max: 1,
+        min: 1,
+        idle: 30000,
+        acquire: 60000,
+        evict: 30000,
+      },
+    });
     store = new SequelizeStateStore(sequelize);
     await store.initialize();
   });
 
+  afterEach(async () => {
+    try {
+      await sequelize.close();
+    } catch {
+      // ignore
+    }
+    try {
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+      }
+    } catch {
+      // ignore
+    }
+  });
+
   describe('initialize', () => {
     it('should create tables without error', async () => {
-      const freshSequelize = new Sequelize('sqlite::memory:', { logging: false });
+      const freshSequelize = new Sequelize({
+        dialect: 'sqlite',
+        storage: ':memory:',
+        logging: false,
+        dialectModule: { Database: SQLite3Wrapper },
+      });
       const freshStore = new SequelizeStateStore(freshSequelize);
       await expect(freshStore.initialize()).resolves.toBeUndefined();
     });

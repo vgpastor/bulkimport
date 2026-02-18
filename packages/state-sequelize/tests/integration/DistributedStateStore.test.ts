@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Sequelize } from 'sequelize';
+import { SQLite3Wrapper } from '../better-sqlite3-adapter.js';
 import { SequelizeStateStore } from '../../src/SequelizeStateStore.js';
 import type { JobState, ProcessedRecord } from '@batchactions/core';
+import type { BatchRow } from '../../src/models/BatchModel.js';
 
 function createJobState(overrides?: Partial<JobState>): JobState {
   return {
@@ -44,15 +46,54 @@ function createRecord(
   };
 }
 
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
 describe('SequelizeStateStore — Distributed', () => {
   let sequelize: Sequelize;
   let store: SequelizeStateStore;
+  let dbPath: string;
 
   beforeEach(async () => {
-    sequelize = new Sequelize('sqlite::memory:', { logging: false });
+    dbPath = path.join(os.tmpdir(), `test-dist-${String(Date.now())}-${String(Math.random())}.sqlite`);
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: dbPath,
+      logging: false, // Set to console.log to debug SQL
+      dialectModule: { Database: SQLite3Wrapper },
+      pool: {
+        max: 1,
+        min: 1,
+        idle: 30000,
+        acquire: 60000,
+        evict: 30000,
+      },
+    });
     store = new SequelizeStateStore(sequelize);
     await store.initialize();
   });
+
+  afterEach(async () => {
+    try {
+      await sequelize.close();
+    } catch {
+      // ignore
+    }
+    try {
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+      }
+    } catch {
+      // ignore
+    }
+  });
+
+  interface BatchModelAccessor {
+    readonly Batch: {
+      bulkCreate: (rows: readonly BatchRow[]) => Promise<unknown>;
+    };
+  }
 
   /** Helper: save a distributed job + register batches in the batch table. */
   async function setupDistributedJob(): Promise<void> {
@@ -66,15 +107,51 @@ describe('SequelizeStateStore — Distributed', () => {
     // Actually, we can use saveBatchRecords + insert batches via raw sequelize.
     // Better: use the internal Batch model via a helper.
 
-    // Insert batch metadata via raw query since we don't expose batch creation method
-    // In production, the PrepareDistributedImport use case would do this
-    const batchTable = 'batchactions_batches';
-    await sequelize.query(
-      `INSERT INTO ${batchTable} (id, "jobId", "batchIndex", status, "workerId", "claimedAt", "recordStartIndex", "recordEndIndex", "processedCount", "failedCount", version) VALUES
-      ('b1', 'job-001', 0, 'PENDING', NULL, NULL, 0, 2, 0, 0, 0),
-      ('b2', 'job-001', 1, 'PENDING', NULL, NULL, 3, 5, 0, 0, 0),
-      ('b3', 'job-001', 2, 'PENDING', NULL, NULL, 6, 8, 0, 0, 0)`,
-    );
+    // Use the internal Batch model via casting to access private property
+    const batchRows = [
+      {
+        id: 'b1',
+        jobId: 'job-001',
+        batchIndex: 0,
+        status: 'PENDING',
+        workerId: null,
+        claimedAt: null,
+        recordStartIndex: 0,
+        recordEndIndex: 2,
+        processedCount: 0,
+        failedCount: 0,
+        version: 0,
+      },
+      {
+        id: 'b2',
+        jobId: 'job-001',
+        batchIndex: 1,
+        status: 'PENDING',
+        workerId: null,
+        claimedAt: null,
+        recordStartIndex: 3,
+        recordEndIndex: 5,
+        processedCount: 0,
+        failedCount: 0,
+        version: 0,
+      },
+      {
+        id: 'b3',
+        jobId: 'job-001',
+        batchIndex: 2,
+        status: 'PENDING',
+        workerId: null,
+        claimedAt: null,
+        recordStartIndex: 6,
+        recordEndIndex: 8,
+        processedCount: 0,
+        failedCount: 0,
+        version: 0,
+      },
+    ];
+
+    const { Batch } = store as unknown as BatchModelAccessor;
+    await Batch.bulkCreate(batchRows);
 
     // Save records for each batch
     await store.saveBatchRecords('job-001', 'b1', [
@@ -491,7 +568,7 @@ describe('SequelizeStateStore — Distributed', () => {
 
     it('should default to false when not set', async () => {
       const job = createJobState();
-      delete (job as Record<string, unknown>)['distributed'];
+      delete (job as unknown as Record<string, unknown>)['distributed'];
       await store.saveJobState(job);
 
       const restored = await store.getJobState('job-001');
