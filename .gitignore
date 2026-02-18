@@ -25,5 +25,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Claude Code local settings
+.claude/
+
 # Lock files (uncomment if using pnpm)
 # package-lock.json

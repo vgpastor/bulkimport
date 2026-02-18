@@ -17,7 +17,7 @@ export type RecordModel = ModelStatic<Model>;
 
 export function defineRecordModel(sequelize: Sequelize): RecordModel {
   return sequelize.define(
-    'BulkImportRecord',
+    'BatchActionsRecord',
     {
       id: {
         type: DataTypes.INTEGER,

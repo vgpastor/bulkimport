@@ -13,5 +13,5 @@ export type {
   ClaimBatchResult,
   ClaimBatchFailureReason,
   DistributedJobStatus,
-} from '@bulkimport/core';
-export { isDistributedStateStore } from '@bulkimport/core';
+} from '@batchactions/core';
+export { isDistributedStateStore } from '@batchactions/core';

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as RecordMapper from '../../src/mappers/RecordMapper.js';
-import type { ProcessedRecord } from '@bulkimport/core';
+import type { ProcessedRecord } from '@batchactions/core';
 
 function createSampleRecord(overrides?: Partial<ProcessedRecord>): ProcessedRecord {
   return {

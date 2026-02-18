@@ -1,4 +1,4 @@
-import type { ImportJobState, ImportJobConfig } from '@bulkimport/core';
+import type { JobState, JobConfig } from '@batchactions/core';
 import type { JobRow } from '../models/JobModel.js';
 import { parseJson } from '../utils/parseJson.js';
 
@@ -11,17 +11,21 @@ interface SerializableFieldDefinition {
   readonly aliases?: readonly string[];
 }
 
-function stripNonSerializableFields(config: ImportJobConfig): object {
-  const fields: SerializableFieldDefinition[] = config.schema.fields.map((f) => {
-    const stripped: SerializableFieldDefinition = {
-      name: f.name,
-      type: f.type,
-      required: f.required,
-    };
-    const result: Record<string, unknown> = { ...stripped };
-    if (f.defaultValue !== undefined) result['defaultValue'] = f.defaultValue;
-    if (f.separator !== undefined) result['separator'] = f.separator;
-    if (f.aliases !== undefined) result['aliases'] = f.aliases;
+function stripNonSerializableFields(config: JobConfig): object {
+  if (!config.schema) return config;
+
+  const schema = config.schema as { fields?: readonly Record<string, unknown>[] };
+  if (!schema.fields || !Array.isArray(schema.fields)) return config;
+
+  const rawFields: readonly Record<string, unknown>[] = schema.fields;
+  const fields: SerializableFieldDefinition[] = rawFields.map((f) => {
+    const name = typeof f['name'] === 'string' ? f['name'] : '';
+    const type = typeof f['type'] === 'string' ? f['type'] : '';
+    const required = typeof f['required'] === 'boolean' ? f['required'] : false;
+    const result: Record<string, unknown> = { name, type, required };
+    if (f['defaultValue'] !== undefined) result['defaultValue'] = f['defaultValue'];
+    if (f['separator'] !== undefined) result['separator'] = f['separator'];
+    if (f['aliases'] !== undefined) result['aliases'] = f['aliases'];
     return result as unknown as SerializableFieldDefinition;
   });
 
@@ -34,7 +38,7 @@ function stripNonSerializableFields(config: ImportJobConfig): object {
   };
 }
 
-export function toRow(state: ImportJobState): JobRow {
+export function toRow(state: JobState): JobRow {
   return {
     id: state.id,
     status: state.status,
@@ -54,14 +58,14 @@ export function toRow(state: ImportJobState): JobRow {
   };
 }
 
-export function toDomain(row: JobRow): ImportJobState {
-  const config = parseJson(row.config) as ImportJobConfig;
-  const batches = parseJson(row.batches) as ImportJobState['batches'];
+export function toDomain(row: JobRow): JobState {
+  const config = parseJson(row.config) as JobConfig;
+  const batches = parseJson(row.batches) as JobState['batches'];
 
-  const base: ImportJobState = {
+  const base: JobState = {
     id: row.id,
     config,
-    status: row.status as ImportJobState['status'],
+    status: row.status as JobState['status'],
     batches,
     totalRecords: row.totalRecords,
   };

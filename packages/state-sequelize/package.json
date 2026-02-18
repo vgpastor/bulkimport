@@ -1,7 +1,7 @@
 {
-  "name": "@bulkimport/state-sequelize",
-  "version": "0.2.0",
-  "description": "Sequelize-based StateStore adapter for @bulkimport/core",
+  "name": "@batchactions/state-sequelize",
+  "version": "0.0.1",
+  "description": "Sequelize-based StateStore adapter for @batchactions/core",
   "type": "module",
   "exports": {
     ".": {
@@ -25,7 +25,7 @@
     "lint": "eslint src/ tests/"
   },
   "keywords": [
-    "bulkimport",
+    "batchactions",
     "sequelize",
     "state-store",
     "persistence",
@@ -35,18 +35,18 @@
   "author": "Víctor Garcia <vgpastor@ingenierosweb.co>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vgpastor/bulkimport",
+    "url": "https://github.com/vgpastor/batchactions",
     "directory": "packages/state-sequelize"
   },
   "engines": {
     "node": ">=16.7.0"
   },
   "peerDependencies": {
-    "@bulkimport/core": ">=0.1.0",
+    "@batchactions/core": ">=0.0.1",
     "sequelize": "^6.0.0"
   },
   "devDependencies": {
-    "@bulkimport/core": "file:../../",
+    "@batchactions/core": "*",
     "@types/node": "^22.13.4",
     "@typescript-eslint/eslint-plugin": "^8.24.1",
     "@typescript-eslint/parser": "^8.24.1",

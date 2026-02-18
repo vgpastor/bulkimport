@@ -1,0 +1,49 @@
+{
+  "name": "@batchactions/import",
+  "version": "0.0.1",
+  "description": "Import-specific layer for @batchactions/core with schema validation, parsers, and template generation",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/ tests/",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\""
+  },
+  "peerDependencies": {
+    "@batchactions/core": ">=0.0.1"
+  },
+  "dependencies": {
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "@batchactions/core": "*",
+    "@types/papaparse": "^5.3.14",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4",
+    "tsup": "^8.4.0"
+  },
+  "keywords": [
+    "bulk-import",
+    "csv",
+    "json",
+    "xml",
+    "schema-validation",
+    "batch-processing"
+  ],
+  "license": "MIT"
+}

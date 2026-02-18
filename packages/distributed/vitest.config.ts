@@ -4,7 +4,8 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@bulkimport/core': path.resolve(__dirname, '../../src/index.ts'),
+      '@batchactions/core': path.resolve(__dirname, '../core/src/index.ts'),
+      '@batchactions/import': path.resolve(__dirname, '../import/src/index.ts'),
     },
   },
   test: {

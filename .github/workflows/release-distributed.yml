@@ -88,7 +88,7 @@ jobs:
             ## Install
 
             ```bash
-            npm install @bulkimport/distributed
+            npm install @batchactions/distributed
             ```
 
             ## Changes

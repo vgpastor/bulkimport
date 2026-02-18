@@ -3,25 +3,27 @@ import type {
   DistributedStateStore,
   ClaimBatchResult,
   DistributedJobStatus,
+  BatchReservation,
   ProcessedRecord,
-  ImportJobState,
-  ImportProgress,
+  JobState,
+  JobProgress,
   BatchState,
   RawRecord,
-} from '@bulkimport/core';
-import { BufferSource, CsvParser } from '@bulkimport/core';
+} from '@batchactions/core';
+import { BufferSource, InMemoryStateStore } from '@batchactions/core';
+import { CsvParser } from '@batchactions/import';
 import { DistributedImport } from '../src/DistributedImport.js';
 import type { DistributedImportConfig } from '../src/DistributedImport.js';
 
 // --- Mock DistributedStateStore ---
 
 class MockDistributedStateStore implements DistributedStateStore {
-  jobs = new Map<string, ImportJobState>();
+  jobs = new Map<string, JobState>();
   records = new Map<string, Map<string, ProcessedRecord[]>>(); // jobId → batchId → records
   batchClaims = new Map<string, { status: string; workerId?: string; claimedAt?: number }[]>(); // jobId → batch states
   finalized = new Set<string>();
 
-  async saveJobState(job: ImportJobState): Promise<void> {
+  async saveJobState(job: JobState): Promise<void> {
     this.jobs.set(job.id, job);
     if (!this.batchClaims.has(job.id)) {
       this.batchClaims.set(
@@ -35,7 +37,7 @@ class MockDistributedStateStore implements DistributedStateStore {
     }
   }
 
-  async getJobState(jobId: string): Promise<ImportJobState | null> {
+  async getJobState(jobId: string): Promise<JobState | null> {
     return this.jobs.get(jobId) ?? null;
   }
 
@@ -96,7 +98,7 @@ class MockDistributedStateStore implements DistributedStateStore {
     return all;
   }
 
-  async getProgress(_jobId: string): Promise<ImportProgress> {
+  async getProgress(_jobId: string): Promise<JobProgress> {
     return {
       totalRecords: 0,
       processedRecords: 0,
@@ -390,7 +392,7 @@ describe('Distributed Processing', () => {
       const { jobId } = await di.prepare(new BufferSource(csv), new CsvParser());
 
       const completionEvents: unknown[] = [];
-      di.on('import:completed', (e) => completionEvents.push(e));
+      di.on('job:completed', (e) => completionEvents.push(e));
 
       const r = await di.processWorkerBatch(jobId, async () => {}, 'w1');
       expect(r.jobComplete).toBe(true);
@@ -535,7 +537,6 @@ describe('Distributed Processing', () => {
 
   describe('error cases', () => {
     it('should throw when using InMemoryStateStore', () => {
-      const { InMemoryStateStore } = require('@bulkimport/core');
       expect(() => {
         new DistributedImport({
           schema: { fields: [{ name: 'name', type: 'string' }] },

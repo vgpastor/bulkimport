@@ -1,13 +1,13 @@
 import type { Sequelize, Transaction } from 'sequelize';
 import type {
   BatchState,
-  ImportJobState,
-  ImportProgress,
+  JobState,
+  JobProgress,
   ProcessedRecord,
   DistributedStateStore,
   ClaimBatchResult,
   DistributedJobStatus,
-} from '@bulkimport/core';
+} from '@batchactions/core';
 import { defineJobModel } from './models/JobModel.js';
 import type { JobModel, JobRow } from './models/JobModel.js';
 import { defineRecordModel } from './models/RecordModel.js';
@@ -23,7 +23,7 @@ export interface SequelizeStateStoreOptions {
 }
 
 /**
- * Sequelize-based StateStore adapter for `@bulkimport/core`.
+ * Sequelize-based StateStore adapter for `@batchactions/core`.
  *
  * Persists import job state and processed records to a relational database
  * using Sequelize v6. Supports any dialect supported by Sequelize (PostgreSQL,
@@ -59,12 +59,12 @@ export class SequelizeStateStore implements DistributedStateStore {
 
   // ── StateStore methods ──────────────────────────────────────────────
 
-  async saveJobState(job: ImportJobState): Promise<void> {
+  async saveJobState(job: JobState): Promise<void> {
     const row = JobMapper.toRow(job);
     await this.Job.upsert(row as unknown as Record<string, unknown>);
   }
 
-  async getJobState(jobId: string): Promise<ImportJobState | null> {
+  async getJobState(jobId: string): Promise<JobState | null> {
     const row = await this.Job.findByPk(jobId);
     if (!row) return null;
     return JobMapper.toDomain(row.get({ plain: true }) as JobRow);
@@ -141,7 +141,7 @@ export class SequelizeStateStore implements DistributedStateStore {
     return rows.map((r) => RecordMapper.toDomain(r.get({ plain: true }) as RecordRow));
   }
 
-  async getProgress(jobId: string): Promise<ImportProgress> {
+  async getProgress(jobId: string): Promise<JobProgress> {
     const jobRow = await this.Job.findByPk(jobId);
     const plain = jobRow ? (jobRow.get({ plain: true }) as JobRow) : null;
 

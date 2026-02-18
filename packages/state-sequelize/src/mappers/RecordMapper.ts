@@ -1,4 +1,4 @@
-import type { ProcessedRecord, RawRecord, ValidationError } from '@bulkimport/core';
+import type { ProcessedRecord, RawRecord, ValidationError } from '@batchactions/core';
 import type { RecordRow } from '../models/RecordModel.js';
 import { parseJson } from '../utils/parseJson.js';
 

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { SequelizeStateStore } from '../../src/SequelizeStateStore.js';
-import type { ImportJobState, ProcessedRecord } from '@bulkimport/core';
+import type { JobState, ProcessedRecord } from '@batchactions/core';
 
-function createJobState(overrides?: Partial<ImportJobState>): ImportJobState {
+function createJobState(overrides?: Partial<JobState>): JobState {
   return {
     id: 'job-001',
     config: {

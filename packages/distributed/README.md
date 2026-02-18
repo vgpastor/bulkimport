@@ -1,31 +1,31 @@
-# @bulkimport/distributed
+# @batchactions/distributed
 
-Distributed parallel batch processing for [@bulkimport/core](https://www.npmjs.com/package/@bulkimport/core). Fan out N workers (AWS Lambda, Cloud Functions, ECS tasks, etc.) to process batches concurrently with atomic claiming, crash recovery, and exactly-once completion.
+Distributed parallel batch processing for [@batchactions/core](https://www.npmjs.com/package/@batchactions/core). Fan out N workers (AWS Lambda, Cloud Functions, ECS tasks, etc.) to process batches concurrently with atomic claiming, crash recovery, and exactly-once completion.
 
 ## When to Use This
 
-Use `@bulkimport/distributed` when:
+Use `@batchactions/distributed` when:
 
 - You need to import **hundreds of thousands or millions of records** and a single process is too slow.
 - You are running in **serverless** (AWS Lambda, Google Cloud Functions) and want to parallelize across multiple invocations.
 - You need **crash resilience** — if a worker dies, another worker picks up the batch.
 
-For simpler scenarios (< 100k records, single server), `@bulkimport/core` alone is sufficient. Use `processChunk()` for serverless with time limits, or `maxConcurrentBatches` for in-process parallelism.
+For simpler scenarios (< 100k records, single server), `@batchactions/core` alone is sufficient. Use `processChunk()` for serverless with time limits, or `maxConcurrentBatches` for in-process parallelism.
 
 ## Installation
 
 ```bash
-npm install @bulkimport/distributed
+npm install @batchactions/distributed
 ```
 
 **Peer dependencies:**
 
-- `@bulkimport/core` >= 0.4.0
+- `@batchactions/core` >= 0.4.0
 
-You also need a `DistributedStateStore` implementation. The official one is [`@bulkimport/state-sequelize`](https://www.npmjs.com/package/@bulkimport/state-sequelize):
+You also need a `DistributedStateStore` implementation. The official one is [`@batchactions/state-sequelize`](https://www.npmjs.com/package/@batchactions/state-sequelize):
 
 ```bash
-npm install @bulkimport/state-sequelize sequelize pg
+npm install @batchactions/state-sequelize sequelize pg
 ```
 
 ## How It Works
@@ -69,9 +69,10 @@ A two-phase processing model:
 ### Orchestrator (Phase 1)
 
 ```typescript
-import { DistributedImport } from '@bulkimport/distributed';
-import { CsvParser, UrlSource } from '@bulkimport/core';
-import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { DistributedImport } from '@batchactions/distributed';
+import { CsvParser } from '@batchactions/import';
+import { UrlSource } from '@batchactions/core';
+import { SequelizeStateStore } from '@batchactions/state-sequelize';
 import { Sequelize } from 'sequelize';
 
 const sequelize = new Sequelize(process.env.DATABASE_URL!);
@@ -107,8 +108,8 @@ await sqs.sendMessage({
 ### Worker (Phase 2)
 
 ```typescript
-import { DistributedImport } from '@bulkimport/distributed';
-import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { DistributedImport } from '@batchactions/distributed';
+import { SequelizeStateStore } from '@batchactions/state-sequelize';
 import { Sequelize } from 'sequelize';
 
 // Lambda handler
@@ -169,7 +170,7 @@ export async function handler(event: SQSEvent, context: Context) {
 | `stateStore` | `StateStore` | required | Must implement `DistributedStateStore` (e.g. `SequelizeStateStore`) |
 | `maxRetries` | `number` | `0` | Retry attempts for processor failures (exponential backoff) |
 | `retryDelayMs` | `number` | `1000` | Base delay in ms between retry attempts |
-| `hooks` | `ImportHooks` | -- | Lifecycle hooks (`beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`) |
+| `hooks` | `JobHooks` | -- | Lifecycle hooks (`beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`) |
 | `duplicateChecker` | `DuplicateChecker` | -- | External duplicate detection |
 | `staleBatchTimeoutMs` | `number` | `900000` | Timeout in ms before stale batches are reclaimed (15 min default) |
 
@@ -217,7 +218,7 @@ If a worker crashes or times out, its claimed batch becomes "stale". The next `p
 You can also manually reclaim stale batches:
 
 ```typescript
-import { isDistributedStateStore } from '@bulkimport/distributed';
+import { isDistributedStateStore } from '@batchactions/distributed';
 
 if (isDistributedStateStore(stateStore)) {
   const reclaimed = await stateStore.reclaimStaleBatches(jobId, 60_000); // 1 min timeout
@@ -254,21 +255,21 @@ di.onAny((event) => {
 ## Architecture
 
 ```
-@bulkimport/distributed
+@batchactions/distributed
 ├── DistributedImport.ts          # Facade (composition root)
 ├── PrepareDistributedImport.ts   # Phase 1 use case
 ├── ProcessDistributedBatch.ts    # Phase 2 use case
 └── index.ts                      # Public API
 
 Depends on:
-└── @bulkimport/core
+└── @batchactions/core
     ├── DistributedStateStore     # Port interface (extended StateStore)
     ├── BatchReservation          # Domain types
     ├── SchemaValidator           # Validation pipeline
     └── EventBus                  # Event system
 
 Implemented by:
-└── @bulkimport/state-sequelize
+└── @batchactions/state-sequelize
     └── SequelizeStateStore       # Concrete DistributedStateStore
         ├── bulkimport_jobs       # Job state table
         ├── bulkimport_records    # Record data table
@@ -280,7 +281,7 @@ Implemented by:
 If you don't use Sequelize, you can implement the `DistributedStateStore` interface:
 
 ```typescript
-import type { DistributedStateStore, ClaimBatchResult, DistributedJobStatus, ProcessedRecord } from '@bulkimport/distributed';
+import type { DistributedStateStore, ClaimBatchResult, DistributedJobStatus, ProcessedRecord } from '@batchactions/distributed';
 
 class MyDistributedStore implements DistributedStateStore {
   // ... all StateStore methods plus:
@@ -320,8 +321,8 @@ class MyDistributedStore implements DistributedStateStore {
 ## Requirements
 
 - Node.js >= 20.0.0
-- `@bulkimport/core` >= 0.4.0
-- A `DistributedStateStore` implementation (e.g. `@bulkimport/state-sequelize` >= 0.1.2)
+- `@batchactions/core` >= 0.4.0
+- A `DistributedStateStore` implementation (e.g. `@batchactions/state-sequelize` >= 0.1.2)
 
 ## License
 

@@ -1,22 +1,23 @@
-# @bulkimport/state-sequelize
+# @batchactions/state-sequelize
 
-Sequelize-based `StateStore` and `DistributedStateStore` adapter for [@bulkimport/core](https://www.npmjs.com/package/@bulkimport/core).
+Sequelize-based `StateStore` and `DistributedStateStore` adapter for [@batchactions/core](https://www.npmjs.com/package/@batchactions/core).
 
 Persists import job state, processed records, and distributed batch metadata to any relational database supported by Sequelize v6 (PostgreSQL, MySQL, MariaDB, SQLite, MS SQL Server).
 
 ## Installation
 
 ```bash
-npm install @bulkimport/state-sequelize
+npm install @batchactions/state-sequelize
 ```
 
-**Peer dependencies:** `@bulkimport/core` (>=0.1.0) and `sequelize` (^6.0.0) must be installed in your project.
+**Peer dependencies:** `@batchactions/core` (>=0.1.0) and `sequelize` (^6.0.0) must be installed in your project.
 
 ## Usage
 
 ```typescript
-import { BulkImport, CsvParser, BufferSource } from '@bulkimport/core';
-import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { BulkImport, CsvParser } from '@batchactions/import';
+import { BufferSource } from '@batchactions/core';
+import { SequelizeStateStore } from '@batchactions/state-sequelize';
 import { Sequelize } from 'sequelize';
 
 // Use your existing Sequelize instance
@@ -53,15 +54,15 @@ Tables are created automatically when you call `initialize()`. The call is idemp
 
 ## Distributed Processing
 
-`SequelizeStateStore` fully implements the `DistributedStateStore` interface, enabling multi-worker parallel processing with [`@bulkimport/distributed`](https://www.npmjs.com/package/@bulkimport/distributed).
+`SequelizeStateStore` fully implements the `DistributedStateStore` interface, enabling multi-worker parallel processing with [`@batchactions/distributed`](https://www.npmjs.com/package/@batchactions/distributed).
 
 ```bash
-npm install @bulkimport/distributed
+npm install @batchactions/distributed
 ```
 
 ```typescript
-import { DistributedImport } from '@bulkimport/distributed';
-import { SequelizeStateStore } from '@bulkimport/state-sequelize';
+import { DistributedImport } from '@batchactions/distributed';
+import { SequelizeStateStore } from '@batchactions/state-sequelize';
 
 const stateStore = new SequelizeStateStore(sequelize);
 await stateStore.initialize();

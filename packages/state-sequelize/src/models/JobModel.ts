@@ -16,7 +16,7 @@ export type JobModel = ModelStatic<Model>;
 
 export function defineJobModel(sequelize: Sequelize): JobModel {
   return sequelize.define(
-    'BulkImportJob',
+    'BatchActionsJob',
     {
       id: {
         type: DataTypes.STRING(36),

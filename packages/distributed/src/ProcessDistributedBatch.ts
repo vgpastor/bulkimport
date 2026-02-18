@@ -1,25 +1,24 @@
 import type {
   StateStore,
   DistributedStateStore,
-  SchemaDefinition,
   ProcessedRecord,
   RecordProcessorFn,
   ProcessingContext,
   HookContext,
-  ImportHooks,
-  DuplicateChecker,
+  JobHooks,
   ValidationError,
-} from '@bulkimport/core';
-import type { EventBus } from '@bulkimport/core';
+} from '@batchactions/core';
+import type { EventBus } from '@batchactions/core';
 import {
-  SchemaValidator,
   markRecordValid,
   markRecordInvalid,
   markRecordFailed,
   hasErrors,
   getWarnings,
   isDistributedStateStore,
-} from '@bulkimport/core';
+} from '@batchactions/core';
+import type { SchemaDefinition, DuplicateChecker } from '@batchactions/import';
+import { SchemaValidator } from '@batchactions/import';
 
 /** Result of processing a single distributed batch. */
 export interface DistributedBatchResult {
@@ -46,7 +45,7 @@ export interface DistributedBatchConfig {
   readonly continueOnError?: boolean;
   readonly maxRetries?: number;
   readonly retryDelayMs?: number;
-  readonly hooks?: ImportHooks;
+  readonly hooks?: JobHooks;
   readonly duplicateChecker?: DuplicateChecker;
 }
 
@@ -63,7 +62,7 @@ export class ProcessDistributedBatch {
   private readonly continueOnError: boolean;
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
-  private readonly hooks: ImportHooks | null;
+  private readonly hooks: JobHooks | null;
   private readonly duplicateChecker: DuplicateChecker | null;
 
   constructor(
@@ -345,7 +344,7 @@ export class ProcessDistributedBatch {
     if (jobComplete) {
       const status = await this.stateStore.getDistributedStatus(jobId);
       this.eventBus.emit({
-        type: 'import:completed',
+        type: 'job:completed',
         jobId,
         summary: {
           total: status.totalBatches,

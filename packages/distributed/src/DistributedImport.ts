@@ -1,16 +1,14 @@
 import type {
-  SchemaDefinition,
   DataSource,
-  SourceParser,
   StateStore,
   RecordProcessorFn,
-  ImportHooks,
-  DuplicateChecker,
+  JobHooks,
   DomainEvent,
   EventType,
   EventPayload,
-} from '@bulkimport/core';
-import { EventBus, isDistributedStateStore } from '@bulkimport/core';
+} from '@batchactions/core';
+import { EventBus, isDistributedStateStore } from '@batchactions/core';
+import type { SchemaDefinition, SourceParser, DuplicateChecker } from '@batchactions/import';
 import { PrepareDistributedImport } from './PrepareDistributedImport.js';
 import type { PrepareResult } from './PrepareDistributedImport.js';
 import { ProcessDistributedBatch } from './ProcessDistributedBatch.js';
@@ -34,7 +32,7 @@ export interface DistributedImportConfig {
   /** Base delay in ms for retry backoff. Default: 1000. */
   readonly retryDelayMs?: number;
   /** Optional lifecycle hooks. */
-  readonly hooks?: ImportHooks;
+  readonly hooks?: JobHooks;
   /** Optional external duplicate detection. */
   readonly duplicateChecker?: DuplicateChecker;
   /**
@@ -154,7 +152,7 @@ export class DistributedImport {
    * Subscribe to a specific domain event type.
    *
    * Events are local to this `DistributedImport` instance. Each worker
-   * has its own event bus. The `import:completed` event is only emitted
+   * has its own event bus. The `job:completed` event is only emitted
    * by the worker that finalizes the job (exactly-once).
    */
   on<T extends EventType>(type: T, handler: (event: EventPayload<T>) => void): this {

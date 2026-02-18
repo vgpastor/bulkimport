@@ -1,15 +1,8 @@
-import type {
-  DataSource,
-  SourceParser,
-  StateStore,
-  DistributedStateStore,
-  SchemaDefinition,
-  ProcessedRecord,
-  Batch,
-} from '@bulkimport/core';
-import type { EventBus } from '@bulkimport/core';
-import { BatchSplitter, SchemaValidator, createPendingRecord, createBatch } from '@bulkimport/core';
-import { isDistributedStateStore } from '@bulkimport/core';
+import type { DataSource, StateStore, DistributedStateStore, ProcessedRecord, Batch } from '@batchactions/core';
+import type { EventBus } from '@batchactions/core';
+import { BatchSplitter, createPendingRecord, createBatch, isDistributedStateStore } from '@batchactions/core';
+import type { SchemaDefinition, SourceParser } from '@batchactions/import';
+import { SchemaValidator } from '@batchactions/import';
 
 /** Result of the prepare phase for distributed processing. */
 export interface PrepareResult {
@@ -77,7 +70,7 @@ export class PrepareDistributedImport {
     await this.stateStore.saveJobState({
       id: jobId,
       config: {
-        schema: this.schema,
+        schema: this.schema as unknown as Record<string, unknown>,
         batchSize: this.batchSize,
         continueOnError: true,
       },

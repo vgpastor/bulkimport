@@ -1,7 +1,7 @@
 {
-  "name": "@bulkimport/distributed",
-  "version": "0.1.0",
-  "description": "Distributed parallel batch processing for @bulkimport/core — fan-out N workers to process batches concurrently",
+  "name": "@batchactions/distributed",
+  "version": "0.0.1",
+  "description": "Distributed parallel batch processing for @batchactions/core — fan-out N workers to process batches concurrently",
   "type": "module",
   "exports": {
     ".": {
@@ -25,7 +25,7 @@
     "lint": "eslint src/ tests/"
   },
   "keywords": [
-    "bulkimport",
+    "batchactions",
     "distributed",
     "parallel",
     "batch-processing",
@@ -37,17 +37,19 @@
   "author": "Víctor Garcia <vgpastor@ingenierosweb.co>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vgpastor/bulkimport",
+    "url": "https://github.com/vgpastor/batchactions",
     "directory": "packages/distributed"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "peerDependencies": {
-    "@bulkimport/core": ">=0.4.0"
+    "@batchactions/core": ">=0.0.1",
+    "@batchactions/import": ">=0.0.1"
   },
   "devDependencies": {
-    "@bulkimport/core": "file:../../",
+    "@batchactions/core": "*",
+    "@batchactions/import": "*",
     "@types/node": "^22.13.4",
     "@typescript-eslint/eslint-plugin": "^8.24.1",
     "@typescript-eslint/parser": "^8.24.1",

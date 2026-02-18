@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Sequelize } from 'sequelize';
 import { SequelizeStateStore } from '../../src/SequelizeStateStore.js';
-import type { ImportJobState, ProcessedRecord } from '@bulkimport/core';
+import type { JobState, ProcessedRecord } from '@batchactions/core';
 
-function createJobState(overrides?: Partial<ImportJobState>): ImportJobState {
+function createJobState(overrides?: Partial<JobState>): JobState {
   return {
     id: 'job-001',
     config: {
@@ -99,8 +99,9 @@ describe('SequelizeStateStore', () => {
       await store.saveJobState(job);
       const restored = await store.getJobState('job-001');
 
-      expect(restored!.config.schema.fields).toHaveLength(2);
-      expect(restored!.config.schema.fields[0]!.name).toBe('email');
+      const schema = restored!.config.schema as { fields: readonly { name: string }[] };
+      expect(schema.fields).toHaveLength(2);
+      expect(schema.fields[0]!.name).toBe('email');
       expect(restored!.config.batchSize).toBe(10);
       expect(restored!.config.continueOnError).toBe(true);
     });

@@ -19,7 +19,7 @@ export type BatchModel = ModelStatic<Model>;
 
 export function defineBatchModel(sequelize: Sequelize): BatchModel {
   return sequelize.define(
-    'BulkImportBatch',
+    'BatchActionsBatch',
     {
       id: {
         type: DataTypes.STRING(36),

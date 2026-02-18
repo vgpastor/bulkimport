@@ -1,32 +1,54 @@
-# CLAUDE.md — @bulkimport/core
+# CLAUDE.md — @batchactions monorepo
 
 ## Project Overview
 
-Public npm library (`@bulkimport/core`) for backend-agnostic bulk data import with schema validation, batch processing, and state management. Designed to be consumed by any TypeScript/JavaScript project regardless of framework or runtime. Must work in both Node.js and browsers (parsing/validation; not file persistence).
+Public npm monorepo for backend-agnostic batch data processing with schema validation, batch processing, and state management. Designed to be consumed by any TypeScript/JavaScript project regardless of framework or runtime. The core engine works in both Node.js and browsers.
+
+### Packages
+
+| Package | Description | Path |
+|---------|-------------|------|
+| `@batchactions/core` | Generic batch processing engine — state machine, events, ports, infrastructure adapters | `packages/core/` |
+| `@batchactions/import` | Import-specific layer — schema validation, parsers (CSV/JSON/XML), template generation, `BulkImport` facade | `packages/import/` |
+| `@batchactions/distributed` | Distributed multi-worker batch processing — prepare/claim/process model | `packages/distributed/` |
+| `@batchactions/state-sequelize` | Sequelize v6 adapter for `StateStore` + `DistributedStateStore` ports | `packages/state-sequelize/` |
 
 ## Architecture
 
-Hexagonal Architecture (Ports & Adapters) with DDD tactical patterns.
+Hexagonal Architecture (Ports & Adapters) with DDD tactical patterns, split across a monorepo.
+
+### `@batchactions/core` — Generic batch engine
 
 ```
-src/
-├── domain/           # Pure domain — zero external dependencies
-│   ├── model/        # Entities, value objects, state machines (all immutable)
-│   ├── ports/        # Interfaces: DataSource, SourceParser, StateStore, RecordProcessorFn
-│   ├── events/       # Domain events (discriminated unions)
-│   └── services/     # Domain services (SchemaValidator, BatchSplitter)
-├── application/      # Application layer (EventBus, ImportJobContext, use cases)
+packages/core/src/
+├── domain/
+│   ├── model/        # Job, Batch, Record, ValidationResult, JobStatus, BatchStatus
+│   ├── ports/        # DataSource, StateStore, DistributedStateStore, RecordProcessor, JobHooks
+│   ├── events/       # DomainEvents (discriminated unions)
+│   └── services/     # BatchSplitter
+├── application/
 │   ├── EventBus.ts
-│   ├── ImportJobContext.ts  # Mutable state holder shared across use cases
-│   └── usecases/     # One class per operation
-│       ├── StartImport.ts
-│       ├── PreviewImport.ts
-│       ├── PauseImport.ts
-│       ├── ResumeImport.ts
-│       ├── AbortImport.ts
-│       └── GetImportStatus.ts
-├── infrastructure/   # Concrete adapters (CsvParser, BufferSource, InMemoryStateStore)
-└── BulkImport.ts     # Facade — thin delegation layer, composition root
+│   ├── JobContext.ts        # Mutable state holder shared across use cases
+│   └── usecases/            # StartJob, ProcessChunk, PauseJob, ResumeJob, AbortJob, GetJobStatus
+├── infrastructure/
+│   ├── sources/     # BufferSource, FilePathSource, StreamSource, UrlSource
+│   └── state/       # InMemoryStateStore, FileStateStore
+└── BatchEngine.ts   # Generic batch engine — composition root
+```
+
+### `@batchactions/import` — Import-specific layer
+
+```
+packages/import/src/
+├── domain/
+│   ├── model/        # Schema, FieldDefinition, PreviewResult
+│   ├── ports/        # SourceParser, DuplicateChecker
+│   └── services/     # SchemaValidator
+├── application/
+│   └── usecases/     # PreviewImport
+├── infrastructure/
+│   └── parsers/      # CsvParser, JsonParser, XmlParser
+└── BulkImport.ts     # Import facade — wraps BatchEngine with schema + parsers
 ```
 
 ### Layer rules
@@ -34,25 +56,29 @@ src/
 - `domain/` MUST NOT import from `application/`, `infrastructure/`, or external packages.
 - `application/` may import from `domain/` only.
 - `infrastructure/` implements `domain/ports/` interfaces and may use external packages.
-- `BulkImport.ts` is the composition root — wires everything together.
-- `index.ts` is the public API surface — every export is intentional.
+- `BatchEngine.ts` / `BulkImport.ts` are composition roots — wire everything together.
+- `index.ts` per package is the public API surface — every export is intentional.
+- `@batchactions/import` depends on `@batchactions/core` (peer dependency).
+- `@batchactions/distributed` depends on `@batchactions/core` and `@batchactions/import` (peer dependencies).
+- `@batchactions/state-sequelize` depends on `@batchactions/core` and `sequelize` (peer dependencies).
 
 ### Key domain concepts
 
-- **ImportStatus**: Finite state machine with explicit valid transitions (`canTransition()`). Terminal states: COMPLETED, ABORTED, FAILED.
-- **Batch**: Immutable grouping of records. Processed sequentially.
+- **JobStatus**: Finite state machine with explicit valid transitions (`canTransition()`). Terminal states: COMPLETED, ABORTED, FAILED.
+- **Batch**: Immutable grouping of records. Processed sequentially or concurrently.
 - **ProcessedRecord**: Immutable record that progresses through statuses: pending → valid/invalid → processed/failed.
-- **SchemaDefinition**: Declares fields with types, required flag, pattern, custom validator, transform, and default value.
+- **SchemaDefinition** (import): Declares fields with types, required flag, pattern, custom validator, transform, and default value.
 - **Domain Events**: Typed with discriminated unions. `EventPayload<T>` extracts the correct event type.
+- **ValidationResult**: Includes `isValid`, `errors`, and optional `parsed` field for carrying transformed data back to the engine.
 
 ## Design Principles
 
 Strictly follow these principles in order of priority:
 
-1. **Outside-In development (London School)** — Start from acceptance tests that describe behavior from the consumer's perspective, then drill into unit tests for domain logic. Use doubles for ports (interfaces), never for implementations. The acceptance test is the living contract of the public API.
-2. **DDD** — Domain model is the core. Business rules live in `domain/`. No framework or infrastructure leaks into the domain. Respect bounded contexts and ubiquitous language: ImportJob, Batch, Record, Schema, ValidationResult.
-3. **SOLID** — Single responsibility per file/class. Depend on abstractions (ports), not concretions. Open for extension via new adapters. Interfaces are small and specific — consumers should not depend on methods they don't use.
-4. **Clean Code** — Small functions, meaningful names, no comments that restate the code. No magic numbers or strings. Early returns over deep nesting. If code needs a comment, refactor it.
+1. **Outside-In development (London School)** — Start from acceptance tests that describe behavior from the consumer's perspective, then drill into unit tests for domain logic. Use doubles for ports (interfaces), never for implementations.
+2. **DDD** — Domain model is the core. Business rules live in `domain/`. No framework or infrastructure leaks into the domain. Respect bounded contexts and ubiquitous language: Job, Batch, Record, Schema, ValidationResult.
+3. **SOLID** — Single responsibility per file/class. Depend on abstractions (ports), not concretions. Open for extension via new adapters.
+4. **Clean Code** — Small functions, meaningful names, no comments that restate the code. No magic numbers or strings. Early returns over deep nesting.
 5. **Immutability** — All types use `readonly`. Records transform through pure functions, never mutation.
 
 ## Mandatory Post-Change Checklist
@@ -61,7 +87,7 @@ After every implementation task, **before considering the task complete**, verif
 
 1. **Run the full pipeline**: `npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build`
 2. **Update `todo.md`**: Mark completed items as `[x]`, add new items discovered during implementation.
-3. **Update `CLAUDE.md`**: If the change affects architecture, public API, known gaps, or technical decisions — update the relevant sections. Remove resolved gaps from "Current State & Known Gaps".
+3. **Update `CLAUDE.md`**: If the change affects architecture, public API, known gaps, or technical decisions — update the relevant sections.
 4. **Update `README.md`**: If the change modifies or adds to the public API (new methods, new config options, new adapters), update usage examples and API reference.
 
 This checklist is non-negotiable. Documentation drift is a bug.
@@ -71,19 +97,20 @@ This checklist is non-negotiable. Documentation drift is a bug.
 ### TypeScript
 
 - Strict mode: `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`, `noFallthroughCasesInSwitch`.
+- Shared compiler options in `tsconfig.base.json` at monorepo root. Each package extends it.
 - Use `type` imports (`import type { ... }`) for types that are erased at runtime.
 - Prefer `interface` for object shapes, `type` for unions and intersections.
-- Use `as const` objects + derived type for enums (see `ImportStatus.ts`, `BatchStatus.ts`).
+- Use `as const` objects + derived type for enums (see `JobStatus.ts`, `BatchStatus.ts`).
 - No `any`. Use `unknown` when the type is genuinely unknown.
 - No classes in domain model — use plain interfaces + factory functions (e.g., `createBatch()`, `createPendingRecord()`). Classes are acceptable for services (`SchemaValidator`) and infrastructure adapters.
 - Barrel exports in `index.ts` only. No intermediate barrel files.
 
 ### Naming
 
-- Files: PascalCase for types/classes (`ImportStatus.ts`), camelCase for pure function modules if needed.
+- Files: PascalCase for types/classes (`JobStatus.ts`), camelCase for pure function modules if needed.
 - Types/Interfaces: PascalCase, no `I` prefix.
 - Functions: camelCase, verb-first (`createBatch`, `markRecordValid`, `canTransition`).
-- Events: namespace:action format (`import:started`, `batch:completed`, `record:failed`).
+- Events: namespace:action format (`job:started`, `batch:completed`, `record:failed`).
 - Constants: PascalCase object with `as const` (not SCREAMING_SNAKE).
 
 ### File structure
@@ -96,8 +123,8 @@ This checklist is non-negotiable. Documentation drift is a bug.
 
 ### Strategy
 
-- **Acceptance tests** (`tests/acceptance/`): Test full workflows through the `BulkImport` facade. These are the primary tests — they validate behavior from the consumer's perspective. Write these FIRST.
-- **Unit tests** (`tests/unit/`): Test domain logic in isolation (SchemaValidator, ImportStatus state machine, EventBus).
+- **Acceptance tests** (`tests/acceptance/`): Test full workflows through the public facades. Primary tests — validate behavior from the consumer's perspective. Write these FIRST.
+- **Unit tests** (`tests/unit/`): Test domain logic in isolation (SchemaValidator, JobStatus state machine, EventBus).
 - Use doubles (mocks/stubs) for ports (interfaces), never for implementations.
 - No mocks for domain logic. Mocks only for infrastructure boundaries when needed.
 - Coverage targets: 90% domain, 80% global.
@@ -105,11 +132,22 @@ This checklist is non-negotiable. Documentation drift is a bug.
 ### Running tests
 
 ```bash
-npm test              # vitest run (single run)
-npm run test:watch    # vitest (watch mode)
-npm run test:coverage # vitest run --coverage
-npm run typecheck     # tsc --noEmit
+# All packages (from monorepo root)
+npm test                        # vitest run across all workspaces
+npm run typecheck               # tsc --noEmit across all workspaces
+npm run lint                    # eslint across all workspaces
+
+# Single package
+npm test -w @batchactions/core
+npm test -w @batchactions/import
+npm test -w @batchactions/distributed
+npm test -w @batchactions/state-sequelize
 ```
+
+### Test configuration
+
+- `vitest.workspace.ts` at monorepo root references all package configs.
+- Each package has its own `vitest.config.ts` with `resolve.alias` mappings for workspace dependencies (e.g., `@batchactions/core` → `../core/src/index.ts`). This allows tests to run against source TypeScript without requiring a prior build.
 
 ### Test conventions
 
@@ -121,110 +159,135 @@ npm run typecheck     # tsc --noEmit
 ## Build & Publish
 
 ```bash
-npm run build    # tsup → dist/ (ESM + CJS + .d.ts)
+npm run build    # tsup across all workspaces → dist/ (ESM + CJS + .d.ts)
 ```
 
-- Dual format: ESM (`.mjs`) + CJS (`.cjs`) with TypeScript declarations.
+- Dual format: ESM (`.mjs`) + CJS (`.cjs`) with TypeScript declarations (`.d.ts`).
 - Only `dist/` is published (`"files": ["dist"]`).
-- Path aliases (`@domain/*`, `@application/*`, `@infrastructure/*`) are for dev/test only — not used in source code (all imports are relative).
+- Path aliases (`@domain/*`, `@application/*`, `@infrastructure/*`) are for dev/test only in `@batchactions/core` — not used in source code (all imports are relative).
 - Target: ES2020 for maximum compatibility (Node 20+, modern browsers).
-- `globalThis.crypto.randomUUID()` requires Node.js >= 20 (global `crypto` stable since Node 20).
+- `globalThis.crypto.randomUUID()` requires Node.js >= 20.
+- Build order: `core` → `import` → `distributed` / `state-sequelize` (core must build first for tsc resolution via package `exports`).
 
 ## Public API Surface
 
-Everything exported from `index.ts` is public API. Changes to exports are breaking changes. The public API consists of:
+### `@batchactions/core`
 
-- `BulkImport` class + `BulkImportConfig` + `GenerateTemplateOptions` types (main entry point)
-- Domain model types (exported as `type` — no runtime footprint), including `ParsedRecord`
-- `ImportStatus` and `BatchStatus` value enums (runtime exports)
-- `ImportStatusResult` type (return type of `getStatus()`)
+- `BatchEngine` class + `BatchEngineConfig`, `ValidateFn` types
+- Domain model types: `JobState`, `JobConfig`, `JobProgress`, `JobSummary`, `ProcessedRecord`, `RawRecord`, `ParsedRecord`, `RecordStatus`, `Batch`, `ValidationResult`, `ValidationError`, `ErrorSeverity`, `ErrorCategory`
+- `JobStatus` and `BatchStatus` value enums (runtime exports)
+- `JobStatusResult` type (return type of `getStatus()`)
 - `ChunkOptions`, `ChunkResult` types (for `processChunk()`)
-- `ImportHooks`, `HookContext` types (lifecycle hooks port)
-- `DuplicateChecker`, `DuplicateCheckResult` types (external duplicate detection port)
-- `ErrorSeverity`, `ErrorCategory` types + `hasErrors()`, `getWarnings()`, `getErrors()` helpers
-- Port interfaces (for consumers implementing custom adapters)
-- Domain event types (for typed event handlers), including `ChunkCompletedEvent`
-- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`
+- `JobHooks`, `HookContext` types (lifecycle hooks port)
+- Port interfaces: `DataSource`, `StateStore`, `RecordProcessorFn`, `ProcessingContext`
+- Distributed types: `DistributedStateStore`, `BatchReservation`, `ClaimBatchResult`, `DistributedJobStatus`
+- Domain events: `JobStartedEvent`, `JobCompletedEvent`, `JobPausedEvent`, `JobAbortedEvent`, `JobFailedEvent`, `JobProgressEvent`, `BatchStartedEvent`, `BatchCompletedEvent`, `BatchFailedEvent`, `RecordProcessedEvent`, `RecordFailedEvent`, `RecordRetriedEvent`, `ChunkCompletedEvent`, `BatchClaimedEvent`, `DistributedPreparedEvent`
+- Domain services: `BatchSplitter`, `EventBus`, `JobContext`
+- Helper functions: `hasErrors()`, `getWarnings()`, `getErrors()`, `validResult()`, `invalidResult()`, `isEmptyRow()`
+- Record functions: `createPendingRecord()`, `markRecordValid()`, `markRecordInvalid()`, `markRecordFailed()`
 - Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`
 - Built-in state stores: `InMemoryStateStore`, `FileStateStore`
 
+### `@batchactions/import`
+
+- `BulkImport` class + `BulkImportConfig`, `GenerateTemplateOptions` types
+- Schema types: `SchemaDefinition`, `FieldDefinition`, `FieldType`, `ValidationFieldResult`, `PreviewResult`
+- `SchemaValidator` domain service
+- Ports: `SourceParser`, `ParserOptions`, `DuplicateChecker`, `DuplicateCheckResult`
+- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`
+- Re-exports commonly used types from `@batchactions/core` for convenience
+
+### `@batchactions/distributed`
+
+- `DistributedImport` class + `DistributedImportConfig`
+- `PrepareResult`, `DistributedBatchResult`, `DistributedBatchConfig` types
+- Re-exports core distributed types
+
+### `@batchactions/state-sequelize`
+
+- `SequelizeStateStore` class + `SequelizeStateStoreOptions`
+
 ## Breaking Changes Policy
 
-**Read and follow the "Breaking Changes & Versioning" section in `CONTRIBUTING.md`.** That is the canonical source for semver rules, deprecation-first protocol, and what counts as a breaking change.
-
-Key rule: **NEVER remove or change public API directly.** Always deprecate first (`@deprecated` + runtime `console.warn`), then remove in the next major version.
+**NEVER remove or change public API directly.** Always deprecate first (`@deprecated` + runtime `console.warn`), then remove in the next major version.
 
 ## Technical Decisions
 
-- **Streaming obligatory**: Never load the entire file in memory. Use `AsyncIterable` / `ReadableStream` to process record by record. This allows handling files with millions of records.
-- **AbortController for pause/resume**: Use native `AbortController` for cancellation signals. Pause is implemented by resolving a Promise that stays pending until `resume()` is called.
+- **Streaming obligatory**: Never load the entire file in memory. Use `AsyncIterable` / `ReadableStream` to process record by record. Handles files with millions of records.
+- **AbortController for pause/resume**: Native `AbortController` for cancellation signals. Pause is implemented by resolving a Promise that stays pending until `resume()`.
 - **Typed Event Emitter**: No `any`. Each event has its own payload type via discriminated unions.
-- **Zero dependencies in domain**: The domain layer has NO external dependencies. Adapters (infrastructure) may use PapaParse, fast-xml-parser, etc.
-- **ID generation**: Use `crypto.randomUUID()` (native Node 20+ and modern browsers).
+- **Zero dependencies in domain**: Domain layers have NO external dependencies. Adapters (infrastructure) may use PapaParse, fast-xml-parser, etc.
+- **ID generation**: `crypto.randomUUID()` (native Node 20+ and modern browsers).
 - **Error boundaries**: Each batch runs inside try/catch. A failing batch does not stop others when `continueOnError: true`. Consumer processor errors are captured in the record, never propagated to the engine.
-- **Retry with exponential backoff**: `maxRetries` and `retryDelayMs` config options. Only processor failures are retried (validation failures are structural, never retried). Backoff formula: `retryDelayMs * 2^(attempt - 1)`. Each retry emits a `record:retried` event. `retryCount` is tracked on `ProcessedRecord`.
+- **Retry with exponential backoff**: `maxRetries` and `retryDelayMs` config options. Only processor failures are retried. Backoff formula: `retryDelayMs * 2^(attempt - 1)`. Each retry emits a `record:retried` event.
+- **Transformed data flow**: `ValidationResult.parsed` carries transformed data from the validation pipeline back to the engine, so `SchemaValidator` transforms are applied before the processor receives records.
+- **DuplicateChecker via hooks**: Since `ValidateFn` in core is synchronous, the async `DuplicateChecker` port is integrated through the `afterValidate` lifecycle hook in `BulkImport.buildHooks()`.
+- **Vitest aliases for dev**: Each package's `vitest.config.ts` maps workspace dependencies to source TypeScript, bypassing the need to build before testing.
 
-## Scope Boundaries — What This Library Does NOT Do
+## Scope Boundaries
 
 - Does NOT expose HTTP endpoints. It is a library, not a server.
 - Does NOT have a UI. Logic and data only.
 - Does NOT choose a database. The consumer decides via the processor callback.
-- Does NOT parse binary formats (Excel, etc.) in MVP. Text only: CSV, JSON, XML.
-- Does NOT do automatic column mapping. The schema defines expectations. Mapping is the consumer's responsibility.
+- Does NOT parse binary formats (Excel, etc.). Text only: CSV, JSON, XML.
+- Does NOT do automatic column mapping. The schema defines expectations.
 - Does NOT retain data in memory. Records pass through the callback and are discarded once processed (except what the StateStore persists).
 
 ## Current State & Known Gaps
 
-Published as `@bulkimport/core@0.5.0`. CI/CD configured with GitHub Actions (lint, typecheck, test matrix Node 18/20/22, build) and npm publish via OIDC Trusted Publisher.
+Monorepo refactored from `@bulkimport/core` to `@batchactions` with 4 packages. All packages at version `0.0.1`.
 
 ### Implemented
 
-- Streaming batch processing — `start()` parses lazily and processes batch-by-batch, never loading all records in memory.
-- `maxConcurrentBatches` — real batch concurrency via `Promise.race` pool with `Set<Promise>` for O(1) add/delete. Default: 1 (sequential). Set > 1 for parallel batch processing.
-- O(1) progress tracking with counters. Percentage includes both processed and failed records.
-- O(1) batch lookup — `batchIndexById` Map for instant batch-by-id access in `processStreamBatch`.
-- O(1) record upsert in state stores — `InMemoryStateStore` uses `Map<number, ProcessedRecord>` internally; `FileStateStore` uses an in-memory Map cache flushed to disk.
+**@batchactions/core:**
+- Streaming batch processing — `start()` parses lazily and processes batch-by-batch.
+- `maxConcurrentBatches` — real batch concurrency via `Promise.race` pool. Default: 1 (sequential).
+- O(1) progress tracking, batch lookup, and record upsert in state stores.
 - Memory release — `clearBatchRecords()` frees record data after each batch completes.
-- Memory-safe failed records — `getFailedRecords()` delegates to StateStore instead of accumulating in memory. No unbounded in-memory growth for imports with high failure rates.
-- Full StateStore integration — `BulkImport` now calls `saveProcessedRecord()` for every record and `updateBatchState()` for batch transitions. State is persisted after each batch for crash recovery.
-- `BulkImport.restore(jobId, config)` — static method to resume interrupted imports. Rebuilds counters from persisted state and skips already-completed batches.
-- Full validation pipeline (string, number, boolean, date, email, array, custom validators).
-- Array field type with configurable separator — strings are auto-split in `applyTransforms()`.
-- Column aliases — case-insensitive header mapping via `resolveAliases()` on `SchemaValidator`.
-- Unique field duplicate detection — cross-batch tracking via `seenUniqueValues` Map, case-insensitive for strings.
+- Memory-safe failed records — `getFailedRecords()` delegates to StateStore.
+- Full StateStore integration — persists records and batch transitions for crash recovery.
+- `BatchEngine.restore(jobId, config)` — static method to resume interrupted jobs.
 - Pause/resume/abort with AbortController.
-- Preview with sampling.
-- Domain events with typed EventBus — handler errors are isolated (try/catch in `emit()`), one broken subscriber cannot disrupt the pipeline.
-- `onAny()` / `offAny()` wildcard event subscription — receive all domain events without listing each type. Useful for SSE/WebSocket relay.
-- Deferred `import:started` event — emitted in the next microtask so handlers registered after `start()` on the same tick receive it.
-- `skipEmptyRows` — shared `isEmptyRow()` function in `Record.ts`, used by SchemaValidator, CsvParser, and BulkImport.
-- Shared `detectMimeType()` utility — used by UrlSource and FilePathSource.
-- ESLint 9 flat config + Prettier configured and enforced.
-- JSDoc on all public API types, interfaces, methods, and ports.
-- `BulkImport.generateTemplate(schema, options?)` — generate CSV template with header and optional synthetic example rows per field type.
-- `BulkImport.count()` — stream-count total records without modifying import state. Useful for progress bars before `start()`.
-- `ParsedRecord` type — semantic alias for `RawRecord` indicating data has been transformed. `RecordProcessorFn` receives `ParsedRecord`.
-- `getStatus()` returns `status` (and deprecated `state` alias) for naming consistency.
-- `itemTransform` on `FieldDefinition` — per-element transform for array fields after splitting.
-- CHANGELOG maintained with Keep a Changelog format.
-- `BatchSplitter` domain service — reusable async generator that groups a record stream into fixed-size batches. Used internally by `StartImport` use case.
-- `application/usecases/` layer — orchestration extracted from `BulkImport` facade into dedicated use case classes (StartImport, PreviewImport, PauseImport, ResumeImport, AbortImport, GetImportStatus). Shared state lives in `ImportJobContext`.
-- Retry mechanism — `maxRetries` (default: 0) and `retryDelayMs` (default: 1000) config options. Exponential backoff for processor failures. `record:retried` event emitted per attempt. `retryCount` tracked on `ProcessedRecord`.
-- `processChunk()` — serverless-friendly chunked processing with `maxRecords` and `maxDurationMs` limits. Chunk boundaries at batch level. `ChunkResult` with `done` flag and cumulative counters. `chunk:completed` event. Compatible with `restore()` for multi-invocation processing.
-- Lifecycle hooks (`ImportHooks`) — 4 optional async hooks in the processing pipeline: `beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`. Hooks receive `HookContext` with job/batch/record metadata and abort signal. Hook errors mark the record as failed (respects `continueOnError`).
-- `DuplicateChecker` port — external duplicate detection against database/API. Only invoked for records that pass internal validation. `DuplicateCheckResult` with `isDuplicate`, `existingId?`, `metadata?`. Optional `checkBatch()` for batch-optimized checks. Checker errors handled gracefully.
-- Extended error model — `ValidationError` now supports optional `severity` (`'error'` | `'warning'`), `category` (`'VALIDATION'` | `'FORMAT'` | `'DUPLICATE'` | `'PROCESSING'` | `'CUSTOM'`), `suggestion`, and `metadata`. Warning-severity errors are non-blocking (record passes to processor with warnings preserved). `hasErrors()`, `getWarnings()`, `getErrors()` helper functions. `ValidationFieldResult` extended with `severity`, `suggestion`, `metadata`. All built-in errors include `category`.
-- Distributed processing domain types — `DistributedStateStore` port, `BatchReservation`, `ClaimBatchResult`, `DistributedJobStatus` types, `isDistributedStateStore()` type guard, `batch:claimed` and `distributed:prepared` domain events. All additive, zero breaking changes.
-- 362 acceptance + unit tests passing (including concurrency, state persistence, restore, retry, XML import, edge cases, user feedback features, processChunk, hooks, duplicate checker, extended errors).
-- npm workspaces configured for monorepo subpackages (`packages/*`).
-- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
+- Domain events with typed EventBus — handler errors are isolated.
+- `onAny()` / `offAny()` wildcard event subscription.
+- Deferred `job:started` event — emitted in the next microtask.
+- Lifecycle hooks (`JobHooks`) — 4 optional async hooks: `beforeValidate`, `afterValidate`, `beforeProcess`, `afterProcess`.
+- Retry mechanism — `maxRetries`, `retryDelayMs`, exponential backoff, `record:retried` event.
+- `processChunk()` — serverless-friendly chunked processing with `maxRecords` and `maxDurationMs` limits.
+- Extended error model — `ValidationError` with `severity`, `category`, `suggestion`, `metadata`. Warning-severity errors are non-blocking.
+- Distributed processing types — `DistributedStateStore` port, `BatchReservation`, `ClaimBatchResult`, domain events.
 - Built-in sources: `BufferSource`, `FilePathSource`, `StreamSource`, `UrlSource`.
 - Built-in state stores: `InMemoryStateStore`, `FileStateStore`.
 
-### Subpackages
+**@batchactions/import:**
+- Full validation pipeline (string, number, boolean, date, email, array, custom validators).
+- Array field type with configurable separator and `itemTransform`.
+- Column aliases — case-insensitive header mapping via `resolveAliases()`.
+- Unique field duplicate detection — cross-batch tracking, case-insensitive for strings.
+- `DuplicateChecker` port — external duplicate detection via `afterValidate` hook.
+- `BulkImport.generateTemplate(schema, options?)` — generate CSV template with example rows.
+- `BulkImport.count()` — stream-count total records without modifying state.
+- Preview with sampling.
+- `skipEmptyRows` — shared `isEmptyRow()` function.
+- Built-in parsers: `CsvParser`, `JsonParser`, `XmlParser`.
+- JSDoc on all public API types and methods.
 
-- **`@bulkimport/state-sequelize`** (`packages/state-sequelize/`) — Sequelize v6 adapter for the `StateStore` + `DistributedStateStore` ports. Persists job state, records, and distributed batch metadata to SQL databases. 79 tests (32 unit + 47 integration with SQLite in-memory). Separate npm package with `peerDependencies` on `@bulkimport/core` and `sequelize`. New `bulkimport_batches` table for distributed mode with atomic batch claiming, optimistic locking, stale batch recovery, and exactly-once job finalization.
-- **`@bulkimport/distributed`** (`packages/distributed/`) — Distributed multi-worker batch processing. Two-phase model: `prepare()` (orchestrator streams file, materializes records in StateStore) + `processWorkerBatch()` (N workers claim batches atomically). Recovery via `reclaimStaleBatches()`. Exactly-once completion via `tryFinalizeJob()`. 13 acceptance tests. Separate npm package with `peerDependency` on `@bulkimport/core >= 0.4.0`.
+**@batchactions/distributed:**
+- Two-phase model: `prepare()` (orchestrator) + `processWorkerBatch()` (N workers claim batches atomically).
+- Recovery via `reclaimStaleBatches()`. Exactly-once completion via `tryFinalizeJob()`.
+
+**@batchactions/state-sequelize:**
+- Sequelize v6 adapter for `StateStore` + `DistributedStateStore` ports.
+- Persists job state, records, and distributed batch metadata to SQL databases.
+- Atomic batch claiming, optimistic locking, stale batch recovery, exactly-once job finalization.
+- Tables: `bulkimport_jobs`, `bulkimport_records`, `bulkimport_batches` (names kept for migration compatibility).
+
+**Monorepo:**
+- npm workspaces with `packages/*` pattern.
+- Shared `tsconfig.base.json` extended by all packages.
+- ESLint 9 flat config + Prettier configured per package.
+- `vitest.workspace.ts` at root for unified test runs.
+- 448+ tests passing across all packages.
 
 ### Known Gaps
 

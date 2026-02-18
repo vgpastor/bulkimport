@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as JobMapper from '../../src/mappers/JobMapper.js';
-import type { ImportJobState } from '@bulkimport/core';
+import type { JobState } from '@batchactions/core';
 
-function createSampleJobState(overrides?: Partial<ImportJobState>): ImportJobState {
+function createSampleJobState(overrides?: Partial<JobState>): JobState {
   return {
     id: 'job-001',
     config: {
@@ -176,7 +176,9 @@ describe('JobMapper', () => {
       expect(restored.batches).toHaveLength(original.batches.length);
       expect(restored.config.batchSize).toBe(original.config.batchSize);
       expect(restored.config.continueOnError).toBe(original.config.continueOnError);
-      expect(restored.config.schema.fields).toHaveLength(original.config.schema.fields.length);
+      const restoredFields = (restored.config.schema as { fields: readonly unknown[] }).fields;
+      const originalFields = (original.config.schema as { fields: readonly unknown[] }).fields;
+      expect(restoredFields).toHaveLength(originalFields.length);
     });
   });
 
