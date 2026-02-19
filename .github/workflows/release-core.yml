@@ -3,10 +3,7 @@ name: Release Core
 on:
   push:
     tags:
-      - 'v*'
-      - '!state-sequelize-v*'
-      - '!distributed-v*'
-      - '!import-v*'
+      - 'core-v*'
 
 permissions:
   contents: write
@@ -24,9 +21,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
+      - run: npm test -w packages/core
+      - name: Typecheck
+        working-directory: packages/core
+        run: npx tsc --noEmit
+      - name: Lint
+        working-directory: packages/core
+        run: npx eslint src/ tests/
 
   publish:
     name: Publish to npm
@@ -45,7 +46,7 @@ jobs:
       - run: npm run build
       - name: Verify version matches tag
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          TAG_VERSION="${GITHUB_REF#refs/tags/core-v}"
           PKG_VERSION=$(node -p "require('./packages/core/package.json').version")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
@@ -67,7 +68,7 @@ jobs:
         id: notes
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PREV_TAG=$(git tag --sort=-creatordate | grep -E "^v" | grep -v "$TAG" | head -n 1 || echo "")
+          PREV_TAG=$(git tag --sort=-creatordate | grep "core-v" | grep -v "$TAG" | head -n 1 || echo "")
           if [ -z "$PREV_TAG" ]; then
             NOTES=$(git log --pretty=format:"- %s" HEAD -- packages/core/)
           else
@@ -84,7 +85,7 @@ jobs:
             ## Install
 
             ```bash
-            npm install @batchactions/core@${{ github.ref_name }}
+            npm install @batchactions/core
             ```
 
             ## Changes
