@@ -10,10 +10,14 @@ Use this package when one process is not enough and you need multiple workers (L
 npm install @batchactions/distributed @batchactions/core @batchactions/import
 ```
 
-You also need a `DistributedStateStore` implementation, for example:
+You also need a `DistributedStateStore` implementation. Choose one:
 
 ```bash
+# Option A: Sequelize
 npm install @batchactions/state-sequelize sequelize
+
+# Option B: Prisma (v6 or v7)
+npm install @batchactions/state-prisma
 ```
 
 ## Processing Model

@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "TypeScript batch job engine for ETL and bulk data processing with state management, retries, pause/resume, and lifecycle events",
   "type": "module",
   "exports": {

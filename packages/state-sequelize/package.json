@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/state-sequelize",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Sequelize persistence adapter for batch jobs and distributed workers with state storage, atomic claims, and job recovery",
   "type": "module",
   "exports": {

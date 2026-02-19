@@ -65,7 +65,8 @@ For full typed exports, see `packages/core/src/index.ts`.
 
 - `@batchactions/import`: high-level import facade
 - `@batchactions/distributed`: multi-worker orchestration
-- `@batchactions/state-sequelize`: SQL persistence adapter
+- `@batchactions/state-sequelize`: SQL persistence adapter (Sequelize)
+- `@batchactions/state-prisma`: SQL persistence adapter (Prisma v6/v7)
 
 ## Links
 

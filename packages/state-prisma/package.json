@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/state-prisma",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Prisma persistence adapter for batch jobs and distributed workers with state storage, atomic claims, and job recovery",
   "type": "module",
   "exports": {

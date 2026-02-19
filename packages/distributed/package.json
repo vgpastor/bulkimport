@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/distributed",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Distributed worker orchestration for TypeScript batch imports with parallel processing, serverless fan-out, and atomic batch claiming",
   "type": "module",
   "exports": {

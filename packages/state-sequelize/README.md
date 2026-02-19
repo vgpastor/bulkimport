@@ -67,6 +67,10 @@ await importer.start(async (record) => {
 - `@batchactions/core` >= 0.0.1
 - `sequelize` ^6.0.0
 
+## Alternatives
+
+If you prefer Prisma over Sequelize, use [`@batchactions/state-prisma`](../state-prisma/README.md) which implements the same `StateStore` and `DistributedStateStore` interfaces with Prisma v6/v7.
+
 ## Links
 
 - Repository: https://github.com/vgpastor/batchactions/tree/main/packages/state-sequelize

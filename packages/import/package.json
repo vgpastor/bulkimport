@@ -1,6 +1,6 @@
 {
   "name": "@batchactions/import",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "CSV/JSON/XML bulk import library for Node.js and TypeScript with schema validation, preview, and ETL-ready processing",
   "engines": {
     "node": ">=20.0.0"
