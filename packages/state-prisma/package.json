@@ -66,7 +66,7 @@
   },
   "devDependencies": {
     "@batchactions/core": "*",
-    "@types/node": "^22.13.4",
+    "@types/node": "^24.11.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",
     "eslint": "^10.0.0",
